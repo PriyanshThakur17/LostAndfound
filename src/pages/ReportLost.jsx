@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CATEGORIES, LOCATIONS } from '../data/sampleItems';
 import { validateLostForm } from '../utils/validation';
+import { addItem } from '../utils/storage';
 import './ReportLost.css';
 
 /**
@@ -20,6 +21,7 @@ function ReportLost() {
 
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Handle standard input/select/textarea changes
   const handleChange = (e) => {
@@ -29,6 +31,9 @@ function ReportLost() {
     // Clear error for field when modified
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+    if (successMessage) {
+      setSuccessMessage('');
     }
   };
 
@@ -57,7 +62,43 @@ function ReportLost() {
       return;
     }
 
-    // Handled in commit 3: storage saving & success banner
+    // Create standard team item object
+    const newItem = {
+      id: Date.now(),
+      type: 'lost',
+      title: formData.title.trim(),
+      category: formData.category,
+      description: formData.description.trim(),
+      location: formData.location,
+      date: formData.date,
+      image: formData.image || '',
+      status: 'Open',
+      createdBy: 'Student',
+      createdAt: new Date().toISOString(),
+    };
+
+    // Save item to campusItems Local Storage
+    addItem(newItem);
+
+    // Set success banner & reset form fields
+    setSuccessMessage('Lost item reported successfully!');
+    setFormData({
+      title: '',
+      category: '',
+      description: '',
+      location: '',
+      date: '',
+      image: '',
+    });
+    setErrors({});
+    setTouched({});
+
+    // Reset file input element if present
+    const fileInput = document.getElementById('item-image');
+    if (fileInput) fileInput.value = '';
+
+    // Scroll smoothly to top of card to show success banner
+    window.scrollTo({ top: 100, behavior: 'smooth' });
   };
 
   return (
@@ -73,6 +114,25 @@ function ReportLost() {
             Provide details about the item you have lost on campus. Your report will be published so fellow students can help you find it.
           </p>
         </header>
+
+        {/* Success Alert Banner */}
+        {successMessage && (
+          <div className="alert alert-success" role="alert">
+            <span className="alert-icon">✅</span>
+            <div className="alert-content">
+              <strong className="alert-title">Report Submitted</strong>
+              <p className="alert-text">{successMessage}</p>
+            </div>
+            <button
+              type="button"
+              className="alert-close"
+              onClick={() => setSuccessMessage('')}
+              aria-label="Close notification"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Form Card */}
         <div className="report-lost-card">
