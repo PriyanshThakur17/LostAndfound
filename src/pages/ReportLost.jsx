@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { CATEGORIES, LOCATIONS } from '../data/sampleItems';
-import { validateLostForm } from '../utils/validation';
+import { validateLostForm, validateImageFile } from '../utils/validation';
 import { addItem } from '../utils/storage';
+import { compressImage, formatBytes } from '../utils/helpers';
 import './ReportLost.css';
 
 /**
@@ -19,9 +20,15 @@ function ReportLost() {
     image: '',
   });
 
+  const [imageMeta, setImageMeta] = useState({
+    fileName: '',
+    fileSize: '',
+  });
+
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
+  const [isCompressing, setIsCompressing] = useState(false);
 
   // Handle standard input/select/textarea changes
   const handleChange = (e) => {
@@ -35,6 +42,51 @@ function ReportLost() {
     if (successMessage) {
       setSuccessMessage('');
     }
+  };
+
+  // Handle image file selection
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file format and size
+    const { isValid, error: imageErr } = validateImageFile(file);
+    if (!isValid) {
+      setErrors((prev) => ({ ...prev, image: imageErr }));
+      e.target.value = '';
+      return;
+    }
+
+    setErrors((prev) => ({ ...prev, image: '' }));
+    setIsCompressing(true);
+
+    try {
+      // Compress and convert to Base64 Data URL for Local Storage compatibility
+      const compressedDataUrl = await compressImage(file);
+      setFormData((prev) => ({ ...prev, image: compressedDataUrl }));
+      setImageMeta({
+        fileName: file.name,
+        fileSize: formatBytes(file.size),
+      });
+    } catch (err) {
+      console.error('Image compression error:', err);
+      setErrors((prev) => ({
+        ...prev,
+        image: 'Failed to process selected image. Please try another file.',
+      }));
+    } finally {
+      setIsCompressing(false);
+    }
+  };
+
+  // Clear selected image
+  const handleClearImage = () => {
+    setFormData((prev) => ({ ...prev, image: '' }));
+    setImageMeta({ fileName: '', fileSize: '' });
+    setErrors((prev) => ({ ...prev, image: '' }));
+
+    const fileInput = document.getElementById('item-image');
+    if (fileInput) fileInput.value = '';
   };
 
   // Handle blur to trigger field-level validation feedback
@@ -90,10 +142,11 @@ function ReportLost() {
       date: '',
       image: '',
     });
+    setImageMeta({ fileName: '', fileSize: '' });
     setErrors({});
     setTouched({});
 
-    // Reset file input element if present
+    // Reset file input element
     const fileInput = document.getElementById('item-image');
     if (fileInput) fileInput.value = '';
 
@@ -269,24 +322,70 @@ function ReportLost() {
               )}
             </div>
 
-            {/* Image Upload */}
+            {/* Image Upload & Preview Container */}
             <div className="form-group">
               <label htmlFor="item-image" className="form-label">
                 Item Image <span className="optional-tag">(Optional)</span>
               </label>
-              <input
-                type="file"
-                id="item-image"
-                name="image"
-                accept="image/*"
-                className="form-control form-file-input"
-              />
+
+              {!formData.image ? (
+                <div className="image-upload-wrapper">
+                  <input
+                    type="file"
+                    id="item-image"
+                    name="image"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className={`form-control form-file-input ${errors.image ? 'form-control--error' : ''}`}
+                    aria-invalid={!!errors.image}
+                    aria-describedby={errors.image ? 'item-image-error' : undefined}
+                  />
+                  {isCompressing && (
+                    <p className="image-compress-spinner">
+                      ⏳ Processing and optimizing image...
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="image-preview-card">
+                  <div className="image-preview-thumbnail-wrapper">
+                    <img
+                      src={formData.image}
+                      alt="Lost item preview"
+                      className="image-preview-thumbnail"
+                    />
+                  </div>
+                  <div className="image-preview-info">
+                    <span className="image-preview-filename">{imageMeta.fileName || 'Selected Image'}</span>
+                    <span className="image-preview-filesize">{imageMeta.fileSize}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClearImage}
+                    className="btn-remove-image"
+                    title="Remove selected image"
+                    aria-label="Remove selected image"
+                  >
+                    🗑️ Remove
+                  </button>
+                </div>
+              )}
+
+              {errors.image && (
+                <span className="field-error" id="item-image-error" role="alert">
+                  {errors.image}
+                </span>
+              )}
             </div>
 
             {/* Submit Button */}
             <div className="form-actions">
-              <button type="submit" className="btn btn-primary btn-submit">
-                Submit Lost Report
+              <button
+                type="submit"
+                className="btn btn-primary btn-submit"
+                disabled={isCompressing}
+              >
+                {isCompressing ? 'Processing Image...' : 'Submit Lost Report'}
               </button>
             </div>
           </form>

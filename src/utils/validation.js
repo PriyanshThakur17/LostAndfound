@@ -92,3 +92,31 @@ export const validateLostForm = (formData) => {
     errors,
   };
 };
+
+/**
+ * Validates an uploaded image file.
+ * @param {File} file
+ * @returns {Object} { isValid: boolean, error: string|null }
+ */
+export const validateImageFile = (file) => {
+  if (!file) return { isValid: true, error: null };
+
+  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+  if (!file.type || !validTypes.includes(file.type)) {
+    return {
+      isValid: false,
+      error: 'Please select a valid image file (JPG, PNG, WEBP, or GIF).',
+    };
+  }
+
+  // Max 5MB limit check
+  const maxSizeBytes = 5 * 1024 * 1024;
+  if (file.size > maxSizeBytes) {
+    return {
+      isValid: false,
+      error: 'Image size must be less than 5 MB.',
+    };
+  }
+
+  return { isValid: true, error: null };
+};
