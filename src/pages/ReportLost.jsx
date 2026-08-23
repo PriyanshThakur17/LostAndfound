@@ -89,6 +89,25 @@ function ReportLost() {
     if (fileInput) fileInput.value = '';
   };
 
+  // Reset form to initial empty state
+  const handleResetForm = () => {
+    setFormData({
+      title: '',
+      category: '',
+      description: '',
+      location: '',
+      date: '',
+      image: '',
+    });
+    setImageMeta({ fileName: '', fileSize: '' });
+    setErrors({});
+    setTouched({});
+    setSuccessMessage('');
+
+    const fileInput = document.getElementById('item-image');
+    if (fileInput) fileInput.value = '';
+  };
+
   // Handle blur to trigger field-level validation feedback
   const handleBlur = (e) => {
     const { name } = e.target;
@@ -134,25 +153,13 @@ function ReportLost() {
 
     // Set success banner & reset form fields
     setSuccessMessage('Lost item reported successfully!');
-    setFormData({
-      title: '',
-      category: '',
-      description: '',
-      location: '',
-      date: '',
-      image: '',
-    });
-    setImageMeta({ fileName: '', fileSize: '' });
-    setErrors({});
-    setTouched({});
+    handleResetForm();
 
-    // Reset file input element
-    const fileInput = document.getElementById('item-image');
-    if (fileInput) fileInput.value = '';
-
-    // Scroll smoothly to top of card to show success banner
+    // Scroll smoothly to top of container
     window.scrollTo({ top: 100, behavior: 'smooth' });
   };
+
+  const descLength = formData.description.trim().length;
 
   return (
     <main className="report-lost-page page">
@@ -287,10 +294,14 @@ function ReportLost() {
                 value={formData.date}
                 onChange={handleChange}
                 onBlur={handleBlur}
+                max={new Date().toISOString().split('T')[0]}
                 className={`form-control ${errors.date ? 'form-control--error' : ''}`}
                 aria-invalid={!!errors.date}
-                aria-describedby={errors.date ? 'item-date-error' : undefined}
+                aria-describedby={errors.date ? 'item-date-error' : 'item-date-help'}
               />
+              <span className="form-helper-text" id="item-date-help">
+                Select the date the item was lost. Future dates are not allowed.
+              </span>
               {errors.date && (
                 <span className="field-error" id="item-date-error" role="alert">
                   {errors.date}
@@ -300,9 +311,18 @@ function ReportLost() {
 
             {/* Description */}
             <div className="form-group">
-              <label htmlFor="item-description" className="form-label">
-                Description <span className="required-star">*</span>
-              </label>
+              <div className="form-label-row">
+                <label htmlFor="item-description" className="form-label">
+                  Description <span className="required-star">*</span>
+                </label>
+                <span
+                  className={`char-counter ${
+                    descLength >= 10 ? 'char-counter--valid' : ''
+                  }`}
+                >
+                  {descLength} / 10 min chars
+                </span>
+              </div>
               <textarea
                 id="item-description"
                 name="description"
@@ -338,8 +358,11 @@ function ReportLost() {
                     onChange={handleImageChange}
                     className={`form-control form-file-input ${errors.image ? 'form-control--error' : ''}`}
                     aria-invalid={!!errors.image}
-                    aria-describedby={errors.image ? 'item-image-error' : undefined}
+                    aria-describedby={errors.image ? 'item-image-error' : 'item-image-help'}
                   />
+                  <span className="form-helper-text" id="item-image-help">
+                    Supported formats: JPG, PNG, WEBP, GIF (Max 5MB).
+                  </span>
                   {isCompressing && (
                     <p className="image-compress-spinner">
                       ⏳ Processing and optimizing image...
@@ -378,14 +401,22 @@ function ReportLost() {
               )}
             </div>
 
-            {/* Submit Button */}
-            <div className="form-actions">
+            {/* Action Buttons */}
+            <div className="form-actions-grid">
               <button
                 type="submit"
                 className="btn btn-primary btn-submit"
                 disabled={isCompressing}
               >
                 {isCompressing ? 'Processing Image...' : 'Submit Lost Report'}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-reset"
+                onClick={handleResetForm}
+                disabled={isCompressing}
+              >
+                Reset Form
               </button>
             </div>
           </form>

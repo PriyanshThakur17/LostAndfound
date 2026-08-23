@@ -280,8 +280,33 @@
   color: #7F1D1D;
 }
 
+.form-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.char-counter {
+  font-size: 0.8rem;
+  color: var(--color-muted, #64748B);
+  font-weight: 500;
+}
+
+.char-counter--valid {
+  color: var(--color-success, #16A34A);
+}
+
+.form-helper-text {
+  font-size: 0.8rem;
+  color: var(--color-muted, #64748B);
+  margin-top: 0.15rem;
+}
+
 /* Button & Actions */
-.form-actions {
+.form-actions-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1rem;
   margin-top: 1rem;
 }
 
@@ -314,6 +339,16 @@
   transform: translateY(1px);
 }
 
+.btn-secondary {
+  background-color: var(--color-background, #F8FAFC);
+  color: var(--color-text, #0F172A);
+  border: 1px solid var(--color-border, #E2E8F0);
+}
+
+.btn-secondary:hover {
+  background-color: #E2E8F0;
+}
+
 /* Responsive */
 @media (max-width: 640px) {
   .report-lost-card {
@@ -323,6 +358,10 @@
   .form-row {
     grid-template-columns: 1fr;
     gap: 1.5rem;
+  }
+
+  .form-actions-grid {
+    grid-template-columns: 1fr;
   }
 
   .report-lost-title {
