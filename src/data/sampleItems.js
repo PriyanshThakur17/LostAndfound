@@ -1,7 +1,52 @@
 // ============================================
-// Sample data seeded into Local Storage
-// on first visit so the app is not empty.
+// Campus Lost & Found — Sample Data & Constants
 // ============================================
+
+export const CATEGORIES = [
+  'Electronics',
+  'Documents',
+  'Accessories',
+  'Books',
+  'Clothing',
+  'Bags',
+  'Keys',
+  'Other',
+];
+
+export const LOCATIONS = [
+  'Main Gate',
+  'Library',
+  'Cafeteria',
+  'Block A',
+  'Block B',
+  'Auditorium',
+  'Sports Complex',
+  'Parking',
+  'Hostel',
+  'Other',
+];
+
+export const STATUSES = ['Open', 'Claimed', 'Archived'];
+
+export const TYPES = ['lost', 'found'];
+
+export const SORT_OPTIONS = [
+  { value: 'newest', label: 'Newest First' },
+  { value: 'oldest', label: 'Oldest First' },
+  { value: 'az', label: 'A — Z' },
+  { value: 'za', label: 'Z — A' },
+];
+
+export const CATEGORY_ICONS = {
+  Electronics: '🎧',
+  Documents: '📄',
+  Accessories: '⌚',
+  Books: '📚',
+  Clothing: '👕',
+  Bags: '🎒',
+  Keys: '🔑',
+  Other: '📦',
+};
 
 export const sampleItems = [
   {
@@ -9,7 +54,7 @@ export const sampleItems = [
     type: 'lost',
     title: 'AirPods Pro',
     category: 'Electronics',
-    description: 'White AirPods Pro in a black case. Lost near the library entrance.',
+    description: 'White AirPods Pro case with a small scratch on the front.',
     location: 'Library',
     date: '2026-08-20',
     image: '',
@@ -22,7 +67,7 @@ export const sampleItems = [
     type: 'found',
     title: 'Student ID Card',
     category: 'Documents',
-    description: 'Found a Chitkara University student ID card near Block A.',
+    description: 'Found student ID card near the main entrance of Block A.',
     location: 'Block A',
     date: '2026-08-19',
     image: '',
@@ -35,7 +80,7 @@ export const sampleItems = [
     type: 'lost',
     title: 'Blue Backpack',
     category: 'Bags',
-    description: 'Navy blue Wildcraft backpack with laptop inside. Last seen in the cafeteria.',
+    description: 'Navy blue Wildcraft backpack containing notebooks.',
     location: 'Cafeteria',
     date: '2026-08-18',
     image: '',
@@ -48,7 +93,7 @@ export const sampleItems = [
     type: 'found',
     title: 'Silver Wristwatch',
     category: 'Accessories',
-    description: 'Fossil silver wristwatch found on the bench near the sports complex.',
+    description: 'Fossil silver metal strap watch found near the basketball court.',
     location: 'Sports Complex',
     date: '2026-08-17',
     image: '',
@@ -61,7 +106,7 @@ export const sampleItems = [
     type: 'lost',
     title: 'Calculus Textbook',
     category: 'Books',
-    description: 'Thomas Calculus 14th Edition. Left in Block B, Room 204.',
+    description: 'Thomas Calculus 14th Edition textbook, left in Room 204.',
     location: 'Block B',
     date: '2026-08-16',
     image: '',
@@ -74,7 +119,7 @@ export const sampleItems = [
     type: 'found',
     title: 'Car Keys (Hyundai)',
     category: 'Keys',
-    description: 'Hyundai car keys with a red keychain found in parking lot B.',
+    description: 'Hyundai key fob with a red leather keychain in Parking Lot B.',
     location: 'Parking',
     date: '2026-08-15',
     image: '',
@@ -87,7 +132,7 @@ export const sampleItems = [
     type: 'lost',
     title: 'Black Hoodie',
     category: 'Clothing',
-    description: 'Plain black Nike hoodie, size L. Lost during the cultural fest at the auditorium.',
+    description: 'Plain black Nike hoodie, size L.',
     location: 'Auditorium',
     date: '2026-08-14',
     image: '',
@@ -100,7 +145,7 @@ export const sampleItems = [
     type: 'found',
     title: 'Wireless Mouse',
     category: 'Electronics',
-    description: 'Logitech wireless mouse found in the hostel common room.',
+    description: 'Logitech silent wireless mouse, black color.',
     location: 'Hostel',
     date: '2026-08-21',
     image: '',
@@ -113,7 +158,7 @@ export const sampleItems = [
     type: 'lost',
     title: 'Prescription Glasses',
     category: 'Accessories',
-    description: 'Black rectangular prescription glasses in a brown case.',
+    description: 'Black rectangular glasses in a hard case.',
     location: 'Main Gate',
     date: '2026-08-22',
     image: '',
@@ -126,7 +171,7 @@ export const sampleItems = [
     type: 'found',
     title: 'Umbrella',
     category: 'Other',
-    description: 'Large black umbrella found at the main gate security desk.',
+    description: 'Large foldable black umbrella.',
     location: 'Main Gate',
     date: '2026-08-23',
     image: '',

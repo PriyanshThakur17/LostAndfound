@@ -1,28 +1,33 @@
 import { useState, useEffect } from 'react';
-import { STORAGE_KEY } from '../utils/constants';
+import { getItems } from '../utils/storage';
 import SearchBar from '../components/SearchBar';
 import FilterBar from '../components/FilterBar';
 import ItemCard from '../components/ItemCard';
 
 /**
- * LostItems Page — displays all items where type === 'lost'.
- * Implements search, category/location/status filtering, and sorting.
+ * Items Page — Main Browse/Search Module (Member 3).
+ * Props:
+ *   initialType : optional default type filter ('lost' | 'found' | 'all')
  */
-const LostItems = () => {
+const Items = ({ initialType = 'all' }) => {
   // ---------- State ----------
-  const [items, setItems] = useState([]);
+  const [allItems, setAllItems] = useState([]);
+  const [typeFilter, setTypeFilter] = useState(initialType);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
   const [location, setLocation] = useState('');
   const [status, setStatus] = useState('');
   const [sort, setSort] = useState('newest');
 
-  // ---------- Load items from Local Storage ----------
+  // Update typeFilter if initialType prop changes (e.g. navigation between /lost-items and /found-items)
   useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-    // Keep only lost items
-    const lostItems = stored.filter((item) => item.type === 'lost');
-    setItems(lostItems);
+    setTypeFilter(initialType);
+  }, [initialType]);
+
+  // ---------- Load data from shared Local Storage ----------
+  useEffect(() => {
+    const loadedItems = getItems();
+    setAllItems(loadedItems);
   }, []);
 
   // ---------- Search helper ----------
@@ -30,16 +35,21 @@ const LostItems = () => {
     if (!search) return true;
     const query = search.toLowerCase();
     return (
-      item.title.toLowerCase().includes(query) ||
-      item.description.toLowerCase().includes(query) ||
-      item.category.toLowerCase().includes(query) ||
-      item.location.toLowerCase().includes(query)
+      (item.title && item.title.toLowerCase().includes(query)) ||
+      (item.description && item.description.toLowerCase().includes(query)) ||
+      (item.category && item.category.toLowerCase().includes(query)) ||
+      (item.location && item.location.toLowerCase().includes(query))
     );
   };
 
-  // ---------- Filter + Sort pipeline ----------
+  // ---------- Filtering & Sorting Pipeline ----------
   const getFilteredItems = () => {
-    let result = items.filter(matchesSearch);
+    let result = allItems.filter(matchesSearch);
+
+    // Filter by type (lost / found / all)
+    if (typeFilter && typeFilter !== 'all') {
+      result = result.filter((item) => item.type === typeFilter);
+    }
 
     // Category filter
     if (category) {
@@ -56,17 +66,17 @@ const LostItems = () => {
       result = result.filter((item) => item.status === status);
     }
 
-    // Sorting
+    // Sort items
     result = [...result].sort((a, b) => {
       switch (sort) {
         case 'newest':
-          return new Date(b.date) - new Date(a.date);
+          return new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt);
         case 'oldest':
-          return new Date(a.date) - new Date(b.date);
+          return new Date(a.date || a.createdAt) - new Date(b.date || b.createdAt);
         case 'az':
-          return a.title.localeCompare(b.title);
+          return (a.title || '').localeCompare(b.title || '');
         case 'za':
-          return b.title.localeCompare(a.title);
+          return (b.title || '').localeCompare(a.title || '');
         default:
           return 0;
       }
@@ -77,33 +87,43 @@ const LostItems = () => {
 
   const filteredItems = getFilteredItems();
 
-  // ---------- Reset all filters ----------
+  // Reset all filters
   const handleReset = () => {
     setSearch('');
     setCategory('');
     setLocation('');
     setStatus('');
+    setTypeFilter(initialType);
     setSort('newest');
   };
 
-  // ---------- Determine empty-state message ----------
-  const hasFiltersApplied = search || category || location || status;
+  // Dynamic headers based on current type filter
+  const getHeaderTitle = () => {
+    if (typeFilter === 'lost') return 'Lost Items';
+    if (typeFilter === 'found') return 'Found Items';
+    return 'Campus Lost & Found Registry';
+  };
 
-  // ---------- Render ----------
+  const getHeaderSubtitle = () => {
+    if (typeFilter === 'lost') return 'Find belongings that students have reported missing on campus.';
+    if (typeFilter === 'found') return 'Browse belongings that have been found around campus.';
+    return 'Search, filter, and browse all reported lost and found belongings on campus.';
+  };
+
   return (
     <main className="page">
-      {/* Page header */}
+      {/* Page Header */}
       <header className="page__header">
-        <h1 className="page__title">Lost Items</h1>
-        <p className="page__subtitle">
-          Find belongings that students have reported missing.
-        </p>
+        <h1 className="page__title">{getHeaderTitle()}</h1>
+        <p className="page__subtitle">{getHeaderSubtitle()}</p>
       </header>
 
-      {/* Search + Filter controls */}
+      {/* Controls Bar (Search + FilterBar) */}
       <div className="controls-bar">
         <SearchBar value={search} onChange={setSearch} />
         <FilterBar
+          type={typeFilter}
+          onTypeChange={setTypeFilter}
           category={category}
           onCategoryChange={setCategory}
           location={location}
@@ -116,7 +136,7 @@ const LostItems = () => {
         />
       </div>
 
-      {/* Results count */}
+      {/* Results Count */}
       {filteredItems.length > 0 && (
         <p className="results-count">
           Showing <span className="results-count__number">{filteredItems.length}</span>{' '}
@@ -124,29 +144,27 @@ const LostItems = () => {
         </p>
       )}
 
-      {/* Items grid or empty state */}
+      {/* Items Grid or Empty States */}
       {filteredItems.length > 0 ? (
         <div className="items-grid">
           {filteredItems.map((item) => (
             <ItemCard key={item.id} item={item} />
           ))}
         </div>
-      ) : items.length === 0 ? (
-        /* No items at all */
+      ) : allItems.length === 0 ? (
         <div className="empty-state">
           <span className="empty-state__icon">📭</span>
-          <h2 className="empty-state__title">No lost items reported yet.</h2>
+          <h2 className="empty-state__title">No items reported yet.</h2>
           <p className="empty-state__text">
-            When students report lost belongings, they will appear here.
+            When students report lost or found belongings, they will appear here.
           </p>
         </div>
       ) : (
-        /* Items exist but filters returned nothing */
         <div className="empty-state">
           <span className="empty-state__icon">🔍</span>
           <h2 className="empty-state__title">No items match your search.</h2>
           <p className="empty-state__text">
-            Try changing your search or filters.
+            Try changing your search keywords or resetting your filters.
           </p>
         </div>
       )}
@@ -154,4 +172,4 @@ const LostItems = () => {
   );
 };
 
-export default LostItems;
+export default Items;

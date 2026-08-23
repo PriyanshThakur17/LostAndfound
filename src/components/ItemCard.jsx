@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { CATEGORY_ICONS } from '../utils/constants';
+import { CATEGORY_ICONS } from '../data/sampleItems';
 
 /**
  * ItemCard — Reusable card displaying a single lost/found item.
@@ -12,26 +12,24 @@ const ItemCard = ({ item }) => {
   // Destructure item fields
   const { id, type, title, category, description, location, date, image, status } = item;
 
-  // Determine the icon to show for the item category
+  // Category icon fallback
   const categoryIcon = CATEGORY_ICONS[category] || '📦';
 
-  // Format the date into a readable string
+  // Format date into human readable string
   const formatDate = (dateStr) => {
+    if (!dateStr) return '';
     const options = { day: '2-digit', month: 'short', year: 'numeric' };
     return new Date(dateStr).toLocaleDateString('en-GB', options);
   };
 
-  // Determine status CSS modifier
-  const statusClass = status.toLowerCase(); // 'open' | 'claimed' | 'archived'
+  const statusClass = (status || 'open').toLowerCase();
 
-  // Handle View Details click — navigates to /item/:id
   const handleViewDetails = () => {
     navigate(`/item/${id}`);
   };
 
   return (
     <article className="item-card">
-      {/* Image section */}
       <div className="item-card__image-wrapper">
         {image ? (
           <img className="item-card__image" src={image} alt={title} />
@@ -39,13 +37,11 @@ const ItemCard = ({ item }) => {
           <span className="item-card__placeholder-icon">{categoryIcon}</span>
         )}
 
-        {/* Lost / Found badge */}
         <span className={`item-card__type-badge item-card__type-badge--${type}`}>
           {type === 'lost' ? '🔴 Lost' : '🟢 Found'}
         </span>
       </div>
 
-      {/* Card body */}
       <div className="item-card__body">
         <h3 className="item-card__title">{categoryIcon} {title}</h3>
 
@@ -64,13 +60,11 @@ const ItemCard = ({ item }) => {
           </span>
         </div>
 
-        {/* Status pill */}
         <span className={`item-card__status item-card__status--${statusClass}`}>
           <span className="item-card__status-dot" />
           {status}
         </span>
 
-        {/* View Details button */}
         <button
           className="item-card__action"
           onClick={handleViewDetails}
