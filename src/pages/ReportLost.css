@@ -108,6 +108,29 @@
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
 }
 
+.form-control--error {
+  border-color: var(--color-danger, #DC2626) !important;
+}
+
+.form-control--error:focus {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15) !important;
+}
+
+.field-error {
+  font-size: 0.85rem;
+  color: var(--color-danger, #DC2626);
+  font-weight: 500;
+  margin-top: 0.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.field-error::before {
+  content: '⚠️';
+  font-size: 0.8rem;
+}
+
 .form-textarea {
   resize: vertical;
   min-height: 110px;

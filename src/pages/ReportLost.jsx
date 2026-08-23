@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { CATEGORIES, LOCATIONS } from '../data/sampleItems';
+import { validateLostForm } from '../utils/validation';
 import './ReportLost.css';
 
 /**
@@ -17,15 +18,46 @@ function ReportLost() {
     image: '',
   });
 
-  // Handle standard input/select changes
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+
+  // Handle standard input/select/textarea changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Clear error for field when modified
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: '' }));
+    }
   };
 
-  // Submission handler placeholder (enhanced in upcoming commits)
+  // Handle blur to trigger field-level validation feedback
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    const { errors: currentErrors } = validateLostForm(formData);
+    if (currentErrors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: currentErrors[name] }));
+    }
+  };
+
+  // Form submission handler
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    const { isValid, errors: validationErrors } = validateLostForm(formData);
+
+    if (!isValid) {
+      setErrors(validationErrors);
+      // Focus first error field for accessibility
+      const firstErrorKey = Object.keys(validationErrors)[0];
+      const element = document.getElementById(`item-${firstErrorKey}`);
+      if (element) element.focus();
+      return;
+    }
+
+    // Handled in commit 3: storage saving & success banner
   };
 
   return (
@@ -56,9 +88,17 @@ function ReportLost() {
                 name="title"
                 value={formData.title}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 placeholder="e.g. AirPods Pro, Blue Backpack, Student ID"
-                className="form-control"
+                className={`form-control ${errors.title ? 'form-control--error' : ''}`}
+                aria-invalid={!!errors.title}
+                aria-describedby={errors.title ? 'item-title-error' : undefined}
               />
+              {errors.title && (
+                <span className="field-error" id="item-title-error" role="alert">
+                  {errors.title}
+                </span>
+              )}
             </div>
 
             {/* Category & Location Row */}
@@ -73,7 +113,10 @@ function ReportLost() {
                   name="category"
                   value={formData.category}
                   onChange={handleChange}
-                  className="form-control"
+                  onBlur={handleBlur}
+                  className={`form-control ${errors.category ? 'form-control--error' : ''}`}
+                  aria-invalid={!!errors.category}
+                  aria-describedby={errors.category ? 'item-category-error' : undefined}
                 >
                   <option value="">Select Category</option>
                   {CATEGORIES.map((cat) => (
@@ -82,6 +125,11 @@ function ReportLost() {
                     </option>
                   ))}
                 </select>
+                {errors.category && (
+                  <span className="field-error" id="item-category-error" role="alert">
+                    {errors.category}
+                  </span>
+                )}
               </div>
 
               {/* Location Lost */}
@@ -94,7 +142,10 @@ function ReportLost() {
                   name="location"
                   value={formData.location}
                   onChange={handleChange}
-                  className="form-control"
+                  onBlur={handleBlur}
+                  className={`form-control ${errors.location ? 'form-control--error' : ''}`}
+                  aria-invalid={!!errors.location}
+                  aria-describedby={errors.location ? 'item-location-error' : undefined}
                 >
                   <option value="">Select Campus Location</option>
                   {LOCATIONS.map((loc) => (
@@ -103,6 +154,11 @@ function ReportLost() {
                     </option>
                   ))}
                 </select>
+                {errors.location && (
+                  <span className="field-error" id="item-location-error" role="alert">
+                    {errors.location}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -117,8 +173,16 @@ function ReportLost() {
                 name="date"
                 value={formData.date}
                 onChange={handleChange}
-                className="form-control"
+                onBlur={handleBlur}
+                className={`form-control ${errors.date ? 'form-control--error' : ''}`}
+                aria-invalid={!!errors.date}
+                aria-describedby={errors.date ? 'item-date-error' : undefined}
               />
+              {errors.date && (
+                <span className="field-error" id="item-date-error" role="alert">
+                  {errors.date}
+                </span>
+              )}
             </div>
 
             {/* Description */}
@@ -131,10 +195,18 @@ function ReportLost() {
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
+                onBlur={handleBlur}
                 rows="4"
                 placeholder="Describe unique features, color, brand, condition, or special marks..."
-                className="form-control form-textarea"
+                className={`form-control form-textarea ${errors.description ? 'form-control--error' : ''}`}
+                aria-invalid={!!errors.description}
+                aria-describedby={errors.description ? 'item-description-error' : undefined}
               ></textarea>
+              {errors.description && (
+                <span className="field-error" id="item-description-error" role="alert">
+                  {errors.description}
+                </span>
+              )}
             </div>
 
             {/* Image Upload */}
