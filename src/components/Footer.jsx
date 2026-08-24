@@ -1,31 +1,31 @@
-import './Footer.css';
+import { NavLink } from 'react-router-dom';
 
 /**
- * Shared Footer component — used across all team member pages.
- * Do NOT duplicate this component.
+ * Footer — Reusable footer matching the university portal design system.
  */
-function Footer() {
-  const currentYear = new Date().getFullYear();
-
+const Footer = () => {
   return (
     <footer className="footer">
-      <div className="footer-inner container">
-        <div className="footer-brand">
-          <span className="footer-logo">🎓</span>
-          <span className="footer-name">Campus Lost &amp; Found Registry</span>
+      <div className="footer__container">
+        <div className="footer__brand">
+          <span className="footer__brand-icon">📦</span>
+          <span className="footer__brand-name">Campus Lost &amp; Found Registry</span>
         </div>
-        <p className="footer-copy">
-          &copy; {currentYear} University Campus. Helping reconnect students with their belongings.
+        <p className="footer__tagline">
+          Helping students relocate lost belongings across campus safely and efficiently.
         </p>
-        <div className="footer-links">
-          <a href="/lost-items">Lost Items</a>
-          <a href="/found-items">Found Items</a>
-          <a href="/report-lost">Report Lost</a>
-          <a href="/report-found">Report Found</a>
+        <div className="footer__links">
+          <NavLink to="/" className="footer__link">Home</NavLink>
+          <NavLink to="/lost-items" className="footer__link">Lost Items</NavLink>
+          <NavLink to="/found-items" className="footer__link">Found Items</NavLink>
+          <NavLink to="/items" className="footer__link">All Items</NavLink>
         </div>
+        <p className="footer__copyright">
+          © {new Date().getFullYear()} Campus Lost &amp; Found Registry — Academic Project
+        </p>
       </div>
     </footer>
   );
-}
+};
 
 export default Footer;

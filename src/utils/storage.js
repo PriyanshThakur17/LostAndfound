@@ -1,128 +1,76 @@
 // ============================================
-// Campus Lost & Found Registry
-// Shared Local Storage Utilities
+// Campus Lost & Found — Shared Storage Utility
 // ============================================
+import { sampleItems } from '../data/sampleItems';
 
-const STORAGE_KEY = 'campusItems';
-
-// Sample seed data for development/testing
-const SEED_DATA = [
-  {
-    id: 1,
-    type: 'lost',
-    title: 'AirPods Pro',
-    category: 'Electronics',
-    description: 'White AirPods Pro case with engraving "J.K." on the inside lid. Lost somewhere near the university library on Monday.',
-    location: 'Library',
-    date: '2026-08-20',
-    image: '',
-    status: 'Open',
-    createdBy: 'Student',
-    createdAt: '2026-08-20',
-  },
-  {
-    id: 2,
-    type: 'found',
-    title: 'Black Wallet',
-    category: 'Accessories',
-    description: 'Black leather wallet found near the cafeteria entrance. Contains student ID and some cash. No phone number found inside.',
-    location: 'Cafeteria',
-    date: '2026-08-21',
-    image: '',
-    status: 'Open',
-    createdBy: 'Student',
-    createdAt: '2026-08-21',
-  },
-  {
-    id: 3,
-    type: 'lost',
-    title: 'Blue Backpack',
-    category: 'Bags',
-    description: 'Navy blue Jansport backpack with a small keychain attached. Contains textbooks for Engineering Mathematics.',
-    location: 'Block A',
-    date: '2026-08-22',
-    image: '',
-    status: 'Open',
-    createdBy: 'Staff',
-    createdAt: '2026-08-22',
-  },
-  {
-    id: 4,
-    type: 'found',
-    title: 'Student ID Card',
-    category: 'Documents',
-    description: 'Found a student ID card near the sports complex. Name partially visible. Please describe the card to claim.',
-    location: 'Sports Complex',
-    date: '2026-08-23',
-    image: '',
-    status: 'Claimed',
-    createdBy: 'Student',
-    createdAt: '2026-08-23',
-  },
-];
+export const STORAGE_KEY = 'campusItems';
 
 /**
- * Read all items from Local Storage.
- * Returns an empty array if storage is empty or data is malformed.
+ * Reads all items from Local Storage (`campusItems`).
+ * If empty or null, seeds initial sample items.
  */
-export function getItems() {
+export const getItems = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleItems));
+      return sampleItems;
+    }
     const parsed = JSON.parse(raw);
-    // Ensure we always return an array
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleItems));
+      return sampleItems;
+    }
+    return parsed;
   } catch (error) {
-    console.error('Failed to read campusItems from Local Storage:', error);
-    return [];
+    console.error('Error reading from Local Storage:', error);
+    return sampleItems;
   }
-}
+};
 
 /**
- * Save items array back to Local Storage.
- * @param {Array} items - Array of item objects
+ * Saves item array to Local Storage under `campusItems`.
  */
-export function saveItems(items) {
+export const saveItems = (items) => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   } catch (error) {
-    console.error('Failed to save campusItems to Local Storage:', error);
+    console.error('Error saving to Local Storage:', error);
   }
-}
+};
 
 /**
- * Find a single item by its numeric ID.
+ * Adds a single new item to Local Storage.
+ */
+export const addItem = (newItem) => {
+  const current = getItems();
+  const updated = [newItem, ...current];
+  saveItems(updated);
+  return updated;
+};
+
+/**
+ * Finds a single item by its ID.
  * @param {number|string} id
- * @returns {Object|null} item or null if not found
+ * @returns {Object|null}
  */
-export function getItemById(id) {
+export const getItemById = (id) => {
   const items = getItems();
-  const numericId = Number(id);
-  return items.find((item) => item.id === numericId) || null;
-}
+  return items.find((item) => String(item.id) === String(id)) || null;
+};
 
 /**
- * Update a single item in storage by merging the provided changes.
- * @param {number} id - item ID
- * @param {Object} changes - fields to merge into the item
+ * Updates an item by ID by merging changes.
+ * @param {number|string} id
+ * @param {Object} changes
  */
-export function updateItem(id, changes) {
+export const updateItem = (id, changes) => {
   const items = getItems();
   const updatedItems = items.map((currentItem) =>
-    currentItem.id === Number(id)
+    String(currentItem.id) === String(id)
       ? { ...currentItem, ...changes }
       : currentItem
   );
   saveItems(updatedItems);
-}
-
-/**
- * Seed Local Storage with sample data ONLY if campusItems is empty.
- * Called once at app startup.
- */
-export function seedDataIfEmpty() {
-  const existing = getItems();
-  if (existing.length === 0) {
-    saveItems(SEED_DATA);
-  }
-}
+  return updatedItems;
+};

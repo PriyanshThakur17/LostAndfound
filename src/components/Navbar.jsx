@@ -1,59 +1,93 @@
-import { Link, NavLink } from 'react-router-dom';
-import './Navbar.css';
+import { useState } from 'react';
+import { NavLink } from 'react-router-dom';
 
 /**
- * Shared Navbar component — used across all team member pages.
- * Do NOT duplicate this component.
+ * Navbar — Primary responsive top navigation bar.
  */
-function Navbar() {
-  return (
-    <header className="navbar">
-      <div className="navbar-inner container">
-        {/* Logo / Brand */}
-        <Link to="/" className="navbar-brand">
-          <span className="navbar-logo-icon">🎓</span>
-          <div className="navbar-brand-text">
-            <span className="navbar-title">Campus Lost &amp; Found</span>
-            <span className="navbar-subtitle">University Registry</span>
-          </div>
-        </Link>
+const Navbar = () => {
+  const [menuOpen, setMenuOpen] = useState(false);
 
-        {/* Navigation Links */}
-        <nav className="navbar-nav">
-          <NavLink
-            to="/lost-items"
-            className={({ isActive }) =>
-              isActive ? 'nav-link nav-link--active' : 'nav-link'
-            }
-          >
-            Lost Items
-          </NavLink>
-          <NavLink
-            to="/found-items"
-            className={({ isActive }) =>
-              isActive ? 'nav-link nav-link--active' : 'nav-link'
-            }
-          >
-            Found Items
-          </NavLink>
-          <NavLink
-            to="/report-lost"
-            className={({ isActive }) =>
-              isActive ? 'nav-link nav-link--active' : 'nav-link'
-            }
-          >
-            Report Lost
-          </NavLink>
-          <NavLink
-            to="/report-found"
-            className="nav-link nav-link--button"
-          >
-            Report Found
-          </NavLink>
-        </nav>
+  const toggleMenu = () => setMenuOpen((prev) => !prev);
+  const closeMenu = () => setMenuOpen(false);
+
+  return (
+    <nav className="navbar">
+      <NavLink to="/" className="navbar__brand" onClick={closeMenu}>
+        <span className="navbar__brand-icon">📦</span>
+        Campus Lost &amp; Found
+      </NavLink>
+
+      <button
+        className="navbar__toggle"
+        onClick={toggleMenu}
+        aria-label="Toggle navigation menu"
+        id="nav-toggle"
+      >
+        {menuOpen ? '✕' : '☰'}
+      </button>
+
+      <div className={`navbar__links${menuOpen ? ' navbar__links--open' : ''}`}>
+        <NavLink
+          to="/"
+          className={({ isActive }) =>
+            `navbar__link${isActive ? ' navbar__link--active' : ''}`
+          }
+          onClick={closeMenu}
+          end
+        >
+          Home
+        </NavLink>
+        <NavLink
+          to="/lost-items"
+          className={({ isActive }) =>
+            `navbar__link${isActive ? ' navbar__link--active' : ''}`
+          }
+          onClick={closeMenu}
+          id="nav-lost-items"
+        >
+          🔴 Lost Items
+        </NavLink>
+        <NavLink
+          to="/found-items"
+          className={({ isActive }) =>
+            `navbar__link${isActive ? ' navbar__link--active' : ''}`
+          }
+          onClick={closeMenu}
+          id="nav-found-items"
+        >
+          🟢 Found Items
+        </NavLink>
+        <NavLink
+          to="/items"
+          className={({ isActive }) =>
+            `navbar__link${isActive ? ' navbar__link--active' : ''}`
+          }
+          onClick={closeMenu}
+          id="nav-all-items"
+        >
+          🔍 All Items
+        </NavLink>
+        <NavLink
+          to="/report-lost"
+          className={({ isActive }) =>
+            `navbar__link${isActive ? ' navbar__link--active' : ''}`
+          }
+          onClick={closeMenu}
+        >
+          + Report Lost
+        </NavLink>
+        <NavLink
+          to="/report-found"
+          className={({ isActive }) =>
+            `navbar__link${isActive ? ' navbar__link--active' : ''}`
+          }
+          onClick={closeMenu}
+        >
+          + Report Found
+        </NavLink>
       </div>
-    </header>
+    </nav>
   );
-}
+};
 
 export default Navbar;
