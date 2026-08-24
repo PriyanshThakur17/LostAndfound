@@ -18,12 +18,20 @@ export const getItems = () => {
     if (!Array.isArray(parsed)) {
       return [];
     }
-    return parsed;
+    // Filter out initial legacy dummy items (IDs 1 through 10)
+    const cleaned = parsed.filter(
+      (item) => item && (typeof item.id !== 'number' || item.id > 100)
+    );
+    if (cleaned.length !== parsed.length) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
+    }
+    return cleaned;
   } catch (error) {
     console.error('Error reading from Local Storage:', error);
     return [];
   }
 };
+
 
 
 /**
