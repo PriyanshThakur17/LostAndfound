@@ -3,7 +3,6 @@ import { CATEGORIES, LOCATIONS } from '../data/sampleItems';
 import { validateLostForm, validateImageFile } from '../utils/validation';
 import { addItem } from '../utils/storage';
 import { compressImage, formatBytes } from '../utils/helpers';
-import './ReportLost.css';
 
 /**
  * ReportLost Component — Member 1 Responsibility
