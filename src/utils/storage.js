@@ -48,3 +48,29 @@ export const addItem = (newItem) => {
   saveItems(updated);
   return updated;
 };
+
+/**
+ * Finds a single item by its ID.
+ * @param {number|string} id
+ * @returns {Object|null}
+ */
+export const getItemById = (id) => {
+  const items = getItems();
+  return items.find((item) => String(item.id) === String(id)) || null;
+};
+
+/**
+ * Updates an item by ID by merging changes.
+ * @param {number|string} id
+ * @param {Object} changes
+ */
+export const updateItem = (id, changes) => {
+  const items = getItems();
+  const updatedItems = items.map((currentItem) =>
+    String(currentItem.id) === String(id)
+      ? { ...currentItem, ...changes }
+      : currentItem
+  );
+  saveItems(updatedItems);
+  return updatedItems;
+};
