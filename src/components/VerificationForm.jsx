@@ -1,10 +1,4 @@
 import { useState } from 'react';
-import './VerificationForm.css';
-
-// ============================================
-// VerificationForm — Ownership Verification
-// and Found Item Report Form
-// ============================================
 
 /**
  * Renders the appropriate verification form based on item type:
@@ -16,51 +10,31 @@ import './VerificationForm.css';
  * @param {Function} onCancel   - Callback when user cancels
  */
 function VerificationForm({ item, onSuccess, onCancel }) {
-  // ----- Form state -----
   const [formData, setFormData] = useState({
-    // Ownership fields (for found items)
     itemColor: '',
     uniqueFeature: '',
     lostLocation: '',
-    // Found report fields (for lost items)
     foundLocation: '',
     foundDate: '',
     additionalInfo: '',
-    // Shared
     contactName: '',
   });
 
-  // Stores per-field validation error messages
   const [errors, setErrors] = useState({});
-
-  // Whether the user is currently submitting
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ----- Handlers -----
-
-  /**
-   * Generic change handler — updates formData for any field.
-   * Uses computed property name with the input's name attribute.
-   */
   const handleChange = (event) => {
     const { name, value } = event.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-
-    // Clear the error for this field as the user types
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
     }
   };
 
-  /**
-   * Validate required fields depending on item type.
-   * Returns an errors object — empty means form is valid.
-   */
   const validate = () => {
     const newErrors = {};
 
     if (item.type === 'found') {
-      // Ownership verification for found items
       if (!formData.itemColor.trim()) {
         newErrors.itemColor = 'Please describe the color of the item.';
       }
@@ -73,7 +47,6 @@ function VerificationForm({ item, onSuccess, onCancel }) {
     }
 
     if (item.type === 'lost') {
-      // Found item report for lost items
       if (!formData.foundLocation.trim()) {
         newErrors.foundLocation = 'Please enter where you found the item.';
       }
@@ -82,7 +55,6 @@ function VerificationForm({ item, onSuccess, onCancel }) {
       }
     }
 
-    // Contact name is required for both
     if (!formData.contactName.trim()) {
       newErrors.contactName = 'Please enter your name so the owner can be notified.';
     }
@@ -90,37 +62,22 @@ function VerificationForm({ item, onSuccess, onCancel }) {
     return newErrors;
   };
 
-  /**
-   * Form submit handler:
-   * 1. Prevents default browser behavior
-   * 2. Validates all required fields
-   * 3. Shows errors or calls onSuccess callback
-   */
   const handleSubmit = (event) => {
     event.preventDefault();
-
     const validationErrors = validate();
 
     if (Object.keys(validationErrors).length > 0) {
-      // Show all validation errors
       setErrors(validationErrors);
       return;
     }
 
-    // Simulate async submission
     setIsSubmitting(true);
     setTimeout(() => {
       setIsSubmitting(false);
-      // Pass form data up to parent for status update
       onSuccess(formData);
     }, 800);
   };
 
-  // ----- Render helpers -----
-
-  /**
-   * Renders a labeled input field with optional error message.
-   */
   const renderField = ({
     label,
     name,
@@ -173,12 +130,9 @@ function VerificationForm({ item, onSuccess, onCancel }) {
     );
   };
 
-  // ----- Render -----
-
   return (
     <div className="verification-form-wrapper">
       {item.type === 'found' ? (
-        /* ---- Ownership Verification (claimant proving they own a found item) ---- */
         <div className="verification-form-card">
           <div className="verification-form-header">
             <h2 className="verification-form-title">🔐 Verify Ownership</h2>
@@ -224,7 +178,7 @@ function VerificationForm({ item, onSuccess, onCancel }) {
             <div className="form-actions">
               <button
                 type="button"
-                className="btn btn--secondary"
+                className="btn btn--outline"
                 onClick={onCancel}
                 disabled={isSubmitting}
               >
@@ -241,7 +195,6 @@ function VerificationForm({ item, onSuccess, onCancel }) {
           </form>
         </div>
       ) : (
-        /* ---- Found Item Report (finder reporting they found a lost item) ---- */
         <div className="verification-form-card">
           <div className="verification-form-header">
             <h2 className="verification-form-title">📦 Report Found Item</h2>
@@ -288,7 +241,7 @@ function VerificationForm({ item, onSuccess, onCancel }) {
             <div className="form-actions">
               <button
                 type="button"
-                className="btn btn--secondary"
+                className="btn btn--outline"
                 onClick={onCancel}
                 disabled={isSubmitting}
               >

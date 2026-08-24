@@ -4,7 +4,6 @@ import StatusBadge from '../components/StatusBadge';
 import VerificationForm from '../components/VerificationForm';
 import { getItemById, updateItem } from '../utils/storage';
 import { CATEGORY_ICONS } from '../data/sampleItems';
-import './ItemDetails.css';
 
 /**
  * ItemDetails — Member 4 Main Page
@@ -34,7 +33,7 @@ const ItemDetails = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Unknown date';
-    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    const options = { day: '2-digit', month: 'short', year: 'numeric' };
     return new Date(dateString).toLocaleDateString('en-GB', options);
   };
 
@@ -64,21 +63,19 @@ const ItemDetails = () => {
   if (notFound) {
     return (
       <main className="page">
-        <div className="container">
-          <div className="not-found-card">
-            <div className="not-found-icon">🔍</div>
-            <h2 className="not-found-title">Item Not Found</h2>
-            <p className="not-found-message">
-              The item you're looking for does not exist or may have been removed from the registry.
-            </p>
-            <div className="not-found-actions">
-              <Link to="/lost-items" className="btn btn--outline">
-                Browse Lost Items
-              </Link>
-              <Link to="/found-items" className="btn btn--primary">
-                Browse Found Items
-              </Link>
-            </div>
+        <div className="not-found-card">
+          <div className="not-found-icon">🔍</div>
+          <h2 className="not-found-title">Item Not Found</h2>
+          <p className="not-found-message">
+            The item you're looking for does not exist or may have been removed from the registry.
+          </p>
+          <div className="not-found-actions">
+            <Link to="/lost-items" className="btn btn--outline">
+              Browse Lost Items
+            </Link>
+            <Link to="/found-items" className="btn btn--primary">
+              Browse Found Items
+            </Link>
           </div>
         </div>
       </main>
@@ -89,11 +86,9 @@ const ItemDetails = () => {
   if (!item) {
     return (
       <main className="page">
-        <div className="container">
-          <div className="loading-card">
-            <div className="loading-spinner" aria-label="Loading item details…"></div>
-            <p>Loading item details…</p>
-          </div>
+        <div className="loading-card">
+          <div className="loading-spinner" aria-label="Loading item details…"></div>
+          <p>Loading item details…</p>
         </div>
       </main>
     );
@@ -103,28 +98,26 @@ const ItemDetails = () => {
   if (claimed) {
     return (
       <main className="page">
-        <div className="container">
-          <div className="success-card">
-            <div className="success-icon">✅</div>
-            <h2 className="success-title">Verification Submitted!</h2>
-            <p className="success-message">
-              Your ownership / report information has been recorded for{' '}
-              <strong>{item.title}</strong>.
-            </p>
-            <div className="success-status">
-              Item Status: <StatusBadge status="Claimed" size="md" />
-            </div>
-            <p className="success-note">
-              Thank you for helping reconnect this item with its owner. The registry team will follow up if needed.
-            </p>
-            <div className="success-actions">
-              <Link to="/lost-items" className="btn btn--outline">
-                Browse Lost Items
-              </Link>
-              <Link to="/found-items" className="btn btn--primary">
-                Browse Found Items
-              </Link>
-            </div>
+        <div className="success-card">
+          <div className="success-icon">✅</div>
+          <h2 className="success-title">Verification Submitted!</h2>
+          <p className="success-message">
+            Your ownership / report information has been recorded for{' '}
+            <strong>{item.title}</strong>.
+          </p>
+          <div className="success-status">
+            Item Status: <StatusBadge status="Claimed" size="md" />
+          </div>
+          <p className="success-note">
+            Thank you for helping reconnect this item with its owner. The registry team will follow up if needed.
+          </p>
+          <div className="success-actions">
+            <Link to="/lost-items" className="btn btn--outline">
+              Browse Lost Items
+            </Link>
+            <Link to="/found-items" className="btn btn--primary">
+              Browse Found Items
+            </Link>
           </div>
         </div>
       </main>
@@ -146,126 +139,124 @@ const ItemDetails = () => {
 
   return (
     <main className="page">
-      <div className="container">
-        {/* Back Navigation */}
-        <div className="back-nav">
-          <button className="back-btn" onClick={() => navigate(-1)} aria-label="Go back">
-            ← Back to Items
-          </button>
-        </div>
-
-        {/* Main Details Card */}
-        <div className="item-details-card">
-          {/* Left: Image Panel */}
-          <div className="item-image-panel">
-            {image ? (
-              <img src={image} alt={`Image of ${title}`} className="item-image" />
-            ) : (
-              <div className="item-image-placeholder" aria-label="No image available">
-                <span className="placeholder-icon">{categoryIcon}</span>
-                <span className="placeholder-text">No Image Available</span>
-              </div>
-            )}
-
-            <div className="image-panel-footer">
-              <span className={typeBadgeClass}>{typeLabel}</span>
-              <StatusBadge status={status} size="sm" />
-            </div>
-          </div>
-
-          {/* Right: Info Panel */}
-          <div className="item-info-panel">
-            <div className="item-header">
-              <h1 className="item-title">
-                {categoryIcon} {title}
-              </h1>
-            </div>
-
-            <div className="item-meta">
-              <div className="meta-row">
-                <span className="meta-icon">🏷️</span>
-                <span className="meta-label">Category:</span>
-                <span className="meta-value">{category}</span>
-              </div>
-              <div className="meta-row">
-                <span className="meta-icon">📍</span>
-                <span className="meta-label">Location:</span>
-                <span className="meta-value">{location}</span>
-              </div>
-              <div className="meta-row">
-                <span className="meta-icon">📅</span>
-                <span className="meta-label">Date:</span>
-                <span className="meta-value">{formatDate(date)}</span>
-              </div>
-              {createdBy && (
-                <div className="meta-row">
-                  <span className="meta-icon">👤</span>
-                  <span className="meta-label">Reported by:</span>
-                  <span className="meta-value">{createdBy}</span>
-                </div>
-              )}
-              {createdAt && (
-                <div className="meta-row">
-                  <span className="meta-icon">🗓️</span>
-                  <span className="meta-label">Posted on:</span>
-                  <span className="meta-value">{formatDate(createdAt)}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="item-description">
-              <h3 className="description-heading">Description</h3>
-              <p className="description-text">{description || 'No description provided.'}</p>
-            </div>
-
-            <div className="item-status-row">
-              <span className="status-label">Current Status:</span>
-              <StatusBadge status={status} size="md" />
-            </div>
-
-            {/* Actions based on Status */}
-            {status === 'Open' && (
-              <div className="item-action">
-                <p className="action-description">{actionDesc}</p>
-                <button className="action-btn" onClick={handleActionClick} aria-label={actionLabel}>
-                  {actionLabel}
-                </button>
-              </div>
-            )}
-
-            {status === 'Claimed' && !claimed && (
-              <div className="claimed-notice">
-                <span className="claimed-icon">✅</span>
-                <div>
-                  <p className="claimed-title">This item has been claimed.</p>
-                  <p className="claimed-subtitle">
-                    If you believe this is yours, please contact the registry office directly.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {status === 'Archived' && (
-              <div className="archived-notice">
-                <span className="archived-icon">🗄️</span>
-                <div>
-                  <p className="archived-title">This item has been archived.</p>
-                  <p className="archived-subtitle">
-                    This listing is no longer active. Please visit the registry office for assistance.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Verification Form */}
-        {showForm && (
-          <section id="verification-section" className="verification-section">
-            <VerificationForm item={item} onSuccess={handleVerificationSuccess} onCancel={handleCancel} />
-          </section>
-        )}
+      {/* Back Navigation */}
+      <div className="back-nav">
+        <button className="back-btn" onClick={() => navigate(-1)} aria-label="Go back">
+          ← Back to Items
+        </button>
       </div>
+
+      {/* Main Details Card */}
+      <div className="item-details-card">
+        {/* Left: Image Panel */}
+        <div className="item-image-panel">
+          {image ? (
+            <img src={image} alt={`Image of ${title}`} className="item-image" />
+          ) : (
+            <div className="item-image-placeholder" aria-label="No image available">
+              <span className="placeholder-icon">{categoryIcon}</span>
+              <span className="placeholder-text">No Image Available</span>
+            </div>
+          )}
+
+          <div className="image-panel-footer">
+            <span className={typeBadgeClass}>{typeLabel}</span>
+            <StatusBadge status={status} size="sm" />
+          </div>
+        </div>
+
+        {/* Right: Info Panel */}
+        <div className="item-info-panel">
+          <div className="item-header">
+            <h1 className="item-title">
+              {categoryIcon} {title}
+            </h1>
+          </div>
+
+          <div className="item-meta">
+            <div className="meta-row">
+              <span className="meta-icon">🏷️</span>
+              <span className="meta-label">Category:</span>
+              <span className="meta-value">{category}</span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-icon">📍</span>
+              <span className="meta-label">Location:</span>
+              <span className="meta-value">{location}</span>
+            </div>
+            <div className="meta-row">
+              <span className="meta-icon">📅</span>
+              <span className="meta-label">Date:</span>
+              <span className="meta-value">{formatDate(date)}</span>
+            </div>
+            {createdBy && (
+              <div className="meta-row">
+                <span className="meta-icon">👤</span>
+                <span className="meta-label">Reported by:</span>
+                <span className="meta-value">{createdBy}</span>
+              </div>
+            )}
+            {createdAt && (
+              <div className="meta-row">
+                <span className="meta-icon">🗓️</span>
+                <span className="meta-label">Posted on:</span>
+                <span className="meta-value">{formatDate(createdAt)}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="item-description">
+            <h3 className="description-heading">Description</h3>
+            <p className="description-text">{description || 'No description provided.'}</p>
+          </div>
+
+          <div className="item-status-row">
+            <span className="status-label">Current Status:</span>
+            <StatusBadge status={status} size="md" />
+          </div>
+
+          {/* Actions based on Status */}
+          {status === 'Open' && (
+            <div className="item-action">
+              <p className="action-description">{actionDesc}</p>
+              <button className="action-btn" onClick={handleActionClick} aria-label={actionLabel}>
+                {actionLabel}
+              </button>
+            </div>
+          )}
+
+          {status === 'Claimed' && !claimed && (
+            <div className="claimed-notice">
+              <span className="claimed-icon">✅</span>
+              <div>
+                <p className="claimed-title">This item has been claimed.</p>
+                <p className="claimed-subtitle">
+                  If you believe this is yours, please contact the registry office directly.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {status === 'Archived' && (
+            <div className="archived-notice">
+              <span className="archived-icon">🗄️</span>
+              <div>
+                <p className="archived-title">This item has been archived.</p>
+                <p className="archived-subtitle">
+                  This listing is no longer active. Please visit the registry office for assistance.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Verification Form */}
+      {showForm && (
+        <section id="verification-section" className="verification-section">
+          <VerificationForm item={item} onSuccess={handleVerificationSuccess} onCancel={handleCancel} />
+        </section>
+      )}
     </main>
   );
 };

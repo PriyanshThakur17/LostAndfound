@@ -1,5 +1,3 @@
-import './StatusBadge.css';
-
 /**
  * StatusBadge — Reusable status indicator component.
  * 
@@ -12,16 +10,13 @@ import './StatusBadge.css';
  * @param {string} size   - 'sm' | 'md' (default 'md')
  */
 function StatusBadge({ status, size = 'md' }) {
-  // Map status to CSS modifier class and emoji icon
   const statusConfig = {
     Open: { modifier: 'open', icon: '🟢', label: 'Open' },
     Claimed: { modifier: 'claimed', icon: '🟡', label: 'Claimed' },
     Archived: { modifier: 'archived', icon: '⚪', label: 'Archived' },
   };
 
-  // Use 'Unknown' if an unrecognized status is passed
   const config = statusConfig[status] || { modifier: 'unknown', icon: '❓', label: status };
-
   const className = `status-badge status-badge--${config.modifier} status-badge--${size}`;
 
   return (
