@@ -1,14 +1,14 @@
 // ============================================
 // Campus Lost & Found — ReportFound Page (Member 2)
 // ============================================
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { CATEGORIES, LOCATIONS } from '../data/sampleItems';
-import { addItem } from '../utils/storage';
+import React, { useState } from 'react'; // store and change data inside component  
+import { Link } from 'react-router-dom'; // to navigate to different page 
+import { CATEGORIES, LOCATIONS } from '../data/sampleItems'; //import category and location list
+import { addItem } from '../utils/storage'; //store and retreive data 
 
-const ReportFound = () => {
+const ReportFound = () => { // call this 
   // Controlled form state
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState({ //update the data by setformdata create data by formdata
     title: '',
     category: '',
     description: '',
@@ -20,26 +20,26 @@ const ReportFound = () => {
   });
 
   // State for image preview thumbnail
-  const [imagePreview, setImagePreview] = useState('');
+  const [imagePreview, setImagePreview] = useState(''); //store data select by user and save as preview
 
   // Form validation errors
-  const [errors, setErrors] = useState({});
+  const [errors, setErrors] = useState({}); //store error data 
 
   // Submission success status
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false); //form submitt succesfully show success page
 
   // Today's date YYYY-MM-DD for date input max attribute
-  const todayDate = new Date().toISOString().split('T')[0];
+  const todayDate = new Date().toISOString().split('T')[0]; //disable future dates from the calendar
 
   // Handle controlled input changes
-  const handleChange = (e) => {
+  const handleChange = (e) => { //user chage input it calls 
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
+    setFormData((prev) => ({ //update the data
+      ...prev, //store all old values 
       [name]: value,
     }));
 
-    if (errors[name]) {
+    if (errors[name]) { //remove error when  start
       setErrors((prev) => ({
         ...prev,
         [name]: null,
@@ -48,13 +48,13 @@ const ReportFound = () => {
   };
 
   // Handle Image upload and FileReader DataURL conversion
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const handleImageChange = (e) => { //image input handle
+    const file = e.target.files[0]; //get first file select 
+    if (!file) return; //stop function when nothing select 
 
     // Validate file type
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (!validTypes.includes(file.type.toLowerCase())) {
+    if (!validTypes.includes(file.type.toLowerCase())) { // check image format allowed 
       setErrors((prev) => ({
         ...prev,
         image: 'Please upload a valid image file (JPG, PNG, or WEBP).',
@@ -63,7 +63,7 @@ const ReportFound = () => {
     }
 
     // Validate max file size (5MB)
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > 5 * 1024 * 1024) { //check file size 5mb
       setErrors((prev) => ({
         ...prev,
         image: 'Image size exceeds the 5MB limit.',
@@ -71,95 +71,96 @@ const ReportFound = () => {
       return;
     }
 
-    setErrors((prev) => ({ ...prev, image: null }));
+    setErrors((prev) => ({ ...prev, image: null })); //remove image error
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const dataUrl = reader.result;
-      setImagePreview(dataUrl);
-      setFormData((prev) => ({
+    const reader = new FileReader(); //filereader is browser api read image data
+    reader.onloadend = () => { //when file reader read image it calls 
+      const dataUrl = reader.result; //dataurl is the 
+      setImagePreview(dataUrl); //show image preview
+      setFormData((prev) => ({ //image also stored in formdata in url format so that we can show image in success page and save in local storage
         ...prev,
         image: dataUrl,
       }));
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(file); //read the image data convert into data url format
   };
 
   // Remove uploaded image
-  const handleRemoveImage = () => {
-    setImagePreview('');
-    setFormData((prev) => ({ ...prev, image: '' }));
-    const fileInput = document.getElementById('found-image-input');
-    if (fileInput) fileInput.value = '';
+  const handleRemoveImage = () => { //function remove selected image 
+    setImagePreview(''); //remove image preview
+    setFormData((prev) => ({ ...prev, image: '' })); //remove img from data 
+    const fileInput = document.getElementById('found-image-input'); //get file input 
+    if (fileInput) fileInput.value = ''; //reset file input 
   };
 
   // Form Validation logic
-  const validateForm = () => {
-    const newErrors = {};
+  const validateForm = () => { //validate form data 
+    const newErrors = {}; //store errors 
 
-    if (!formData.title || !formData.title.trim()) {
+    if (!formData.title || !formData.title.trim()) { //validate title 
       newErrors.title = 'Item name is required.';
-    } else if (formData.title.trim().length < 2) {
+    } else if (formData.title.trim().length < 2) { //validate title 
       newErrors.title = 'Item name must be at least 2 characters.';
     }
 
-    if (!formData.category) {
+    if (!formData.category) { //validate category 
       newErrors.category = 'Please select an item category.';
     }
 
-    if (!formData.location) {
+    if (!formData.location) { //validate location 
       newErrors.location = 'Please select the location where the item was found.';
     }
 
-    if (!formData.date) {
+    if (!formData.date) { //validate date 
       newErrors.date = 'Found date is required.';
-    } else if (new Date(formData.date) > new Date()) {
+    } else if (new Date(formData.date) > new Date()) { //validate date 
       newErrors.date = 'Found date cannot be in the future.';
     }
 
-    if (!formData.description || !formData.description.trim()) {
+    if (!formData.description || !formData.description.trim()) { //check description is empty 
       newErrors.description = 'Item description is required.';
     } else if (formData.description.trim().length < 10) {
       newErrors.description = 'Please enter at least 10 characters describing the item.';
     }
 
-    if (!formData.currentLocation || !formData.currentLocation.trim()) {
+    if (!formData.currentLocation || !formData.currentLocation.trim()) { //check current location is empty
       newErrors.currentLocation = 'Please specify where the item is currently kept or handed over.';
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors(newErrors); //set errors
+    return Object.keys(newErrors).length === 0; //return true if no errors
   };
 
   // Handle Form Submission
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = (e) => { //submit form
+    e.preventDefault();// prevent from refreshing page 
 
-    if (!validateForm()) {
+    if (!validateForm()) { //if form is not valid return 
       return;
     }
 
-    const newItem = {
-      id: Date.now(),
-      type: 'found',
-      title: formData.title.trim(),
-      category: formData.category,
-      description: formData.description.trim(),
-      location: formData.location,
-      date: formData.date,
-      currentLocation: formData.currentLocation.trim(),
-      contact: formData.contact ? formData.contact.trim() : 'Campus Security Desk',
-      image: formData.image,
-      status: 'Open',
-      createdBy: 'Student',
+    const newItem = { //new item created found item 
+      id: Date.now(), //unique id
+      type: 'found', //type of item
+      title: formData.title.trim(), //title of item
+      category: formData.category, //category of item
+      description: formData.description.trim(), //description of item
+      location: formData.location, //location of item
+      date: formData.date, //date of item
+      currentLocation: formData.currentLocation.trim(), //current location of item
+      contact: formData.contact ? formData.contact.trim() : 'Campus Security Desk', //contact of item ternary item
+      image: formData.image, //image of item
+      status: 'Open', //status of item
+      createdBy: 'Student', //created by
+      createdAt: new Date().toISOString().split('T')[0],
       createdAt: new Date().toISOString().split('T')[0],
     };
 
-    addItem(newItem);
-    setIsSubmitted(true);
+    addItem(newItem); //sends new item to storage system 
+    setIsSubmitted(true); // submision status 
   };
 
-  const handleReportAnother = () => {
+  const handleReportAnother = () => { // reset form 
     setFormData({
       title: '',
       category: '',
@@ -176,15 +177,15 @@ const ReportFound = () => {
   };
 
   return (
-    <main className="page">
-      <div className="page__header">
-        <h1 className="page__title">Report a Found Item</h1>
-        <p className="page__subtitle">
-          Help reunite a lost belonging with its owner by providing accurate details.
+    <main className="page"> // main page container
+      <div className="page__header"> // page header container
+        <h1 className="page__title">Report a Found Item</h1> // title
+        <p className="page__subtitle"> // subtitle
+          Help reunite a lost belonging with its owner by providing accurate details. //subtitle
         </p>
       </div>
 
-      {isSubmitted ? (
+      {isSubmitted ? ( // if form is submitted show this section
         <div className="card success-card">
           <div className="success-card__icon">✓</div>
           <h2 className="success-card__title">Found item reported successfully!</h2>
@@ -205,23 +206,23 @@ const ReportFound = () => {
           </div>
         </div>
       ) : (
-        <div className="card form-card">
-          <form onSubmit={handleSubmit} noValidate>
+        <div className="card form-card"> // form card container
+          <form onSubmit={handleSubmit} noValidate> // when from subbmit onsubmit=handlesubmit calls
             {/* 1. Item Title */}
-            <div className="form-group">
-              <label htmlFor="found-title" className="form-label">
-                Item Name <span className="required-asterisk">*</span>
+            <div className="form-group"> // form group container
+              <label htmlFor="found-title" className="form-label"> // label
+                Item Name <span className="required-asterisk">*</span> // required field indicator
               </label>
               <input
                 id="found-title"
                 type="text"
-                name="title"
+                name="title" // data came form formdata.title 
                 className={`form-control ${errors.title ? 'is-invalid' : ''}`}
                 placeholder="e.g. Black Leather Wallet, Student ID Card, Blue Water Bottle"
                 value={formData.title}
                 onChange={handleChange}
               />
-              {errors.title && <span className="error-message">⚠️ {errors.title}</span>}
+              {errors.title && <span className="error-message">⚠️ {errors.title}</span>} // display the error message if it is
             </div>
 
             {/* 2. Category & Location (Row) */}
@@ -238,7 +239,7 @@ const ReportFound = () => {
                   onChange={handleChange}
                 >
                   <option value="">Select Category ▼</option>
-                  {CATEGORIES.map((cat) => (
+                  {CATEGORIES.map((cat) => ( // get id from url
                     <option key={cat} value={cat}>
                       {cat}
                     </option>
@@ -260,7 +261,7 @@ const ReportFound = () => {
                 >
                   <option value="">Select Campus Location ▼</option>
                   {LOCATIONS.map((loc) => (
-                    <option key={loc} value={loc}>
+                    <option key={loc} value={loc}> // loops through all campus location
                       {loc}
                     </option>
                   ))}
@@ -279,7 +280,7 @@ const ReportFound = () => {
                   id="found-date"
                   type="date"
                   name="date"
-                  max={todayDate}
+                  max={todayDate} // sets maximum date that can be selected
                   className={`form-control ${errors.date ? 'is-invalid' : ''}`}
                   value={formData.date}
                   onChange={handleChange}
@@ -314,7 +315,7 @@ const ReportFound = () => {
               <textarea
                 id="found-description"
                 name="description"
-                rows="4"
+                rows="4" // con not conatin multiple lines
                 className={`form-control ${errors.description ? 'is-invalid' : ''}`}
                 placeholder="Describe unique features, color, brand, condition, or marks (minimum 10 characters)..."
                 value={formData.description}
@@ -351,9 +352,9 @@ const ReportFound = () => {
                 <input
                   id="found-image-input"
                   type="file"
-                  accept="image/jpeg,image/jpg,image/png,image/webp"
-                  className="file-input"
-                  onChange={handleImageChange}
+                  accept="image/jpeg,image/jpg,image/png,image/webp" // accept only these formats
+                  className="file-input" // input field for image upload
+                  onChange={handleImageChange} // when image is selected call handleimagechange function
                 />
                 <label htmlFor="found-image-input" className="btn-upload-trigger">
                   📷 Choose Image
@@ -363,14 +364,14 @@ const ReportFound = () => {
                 {imagePreview && (
                   <div className="image-preview-container">
                     <img
-                      src={imagePreview}
+                      src={imagePreview} // display selected image 
                       alt="Found Item Preview"
                       className="image-preview"
                     />
                     <button
-                      type="button"
+                      type="button" // button to remove image
                       className="btn-remove-image"
-                      onClick={handleRemoveImage}
+                      onClick={handleRemoveImage} // remove image when clicked 
                       title="Remove Image"
                       aria-label="Remove Image"
                     >
@@ -384,7 +385,7 @@ const ReportFound = () => {
 
             {/* Submit Button */}
             <div className="form-actions" style={{ marginTop: '2rem' }}>
-              <button type="submit" className="btn btn--secondary btn--full">
+              <button type="submit" className="btn btn--secondary btn--full"> //prevents page refresh validates the form creates the item object saves it displays success
                 Report Found Item
               </button>
             </div>
@@ -395,4 +396,5 @@ const ReportFound = () => {
   );
 };
 
-export default ReportFound;
+export default ReportFound; // export the component available to other file 
+
