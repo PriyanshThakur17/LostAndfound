@@ -101,11 +101,11 @@ export const validateLostForm = (formData) => {
 export const validateImageFile = (file) => {
   if (!file) return { isValid: true, error: null };
 
-  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
   if (!file.type || !validTypes.includes(file.type)) {
     return {
       isValid: false,
-      error: 'Please select a valid image file (JPG, PNG, WEBP, or GIF).',
+      error: 'Please select a valid image file (JPEG, PNG, or WebP).',
     };
   }
 

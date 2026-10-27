@@ -8,6 +8,14 @@ import { removeUploadedFile } from '../middleware/upload.js';
  */
 export const getItems = async (req, res, next) => {
   try {
+    if (Item.db.readyState !== 1) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database connection is currently unavailable. Please verify MongoDB is running.',
+        data: [],
+      });
+    }
+
     const { type, category, location, status, q, sort } = req.query;
 
     const query = {};
@@ -76,6 +84,13 @@ export const getItems = async (req, res, next) => {
  */
 export const getItemById = async (req, res, next) => {
   try {
+    if (Item.db.readyState !== 1) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database connection is currently unavailable. Please verify MongoDB is running.',
+      });
+    }
+
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -174,6 +189,16 @@ export const createItem = async (req, res, next) => {
 
     // Determine final image path (uploaded file or passed string)
     const image = uploadedImagePath || req.body.image || '';
+
+    if (Item.db.readyState !== 1) {
+      if (uploadedImagePath) {
+        removeUploadedFile(uploadedImagePath);
+      }
+      return res.status(503).json({
+        success: false,
+        message: 'Database connection is currently unavailable. Please verify MongoDB is running or configure MONGODB_URI.',
+      });
+    }
 
     // Create item document referencing authenticated user
     const newItem = new Item({

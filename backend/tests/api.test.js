@@ -6,7 +6,6 @@ import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
 import app from '../server.js';
 import { UPLOAD_DIR, removeUploadedFile } from '../middleware/upload.js';
-import { CATEGORIES, LOCATIONS } from '../models/Item.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

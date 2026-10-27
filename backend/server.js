@@ -54,8 +54,9 @@ app.use('/api/*', (req, res) => {
 // Centralized error handling
 app.use(errorHandler);
 
-// Start server if not imported by test runner
-if (process.env.NODE_ENV !== 'test') {
+// Start server only if executed directly as entry script
+const isMain = process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) === path.resolve(process.argv[1]);
+if (isMain && process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
     console.log(`[Server] Campus Lost & Found API running on http://localhost:${PORT}`);
   });

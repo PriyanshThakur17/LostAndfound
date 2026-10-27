@@ -3,7 +3,7 @@
  * Enforces team JSON API contract:
  * { "success": false, "message": "Readable error message" }
  */
-export const errorHandler = (err, req, res, next) => {
+export const errorHandler = (err, req, res, _next) => {
   console.error('[API Error]:', err);
 
   let statusCode = err.statusCode || 500;

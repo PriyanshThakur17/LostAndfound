@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { CATEGORIES, LOCATIONS } from '../data/sampleItems';
 import { validateLostForm, validateImageFile } from '../utils/validation';
 import { addItem } from '../utils/storage';
-import { compressImage, formatBytes } from '../utils/helpers';
+import { formatBytes } from '../utils/helpers';
+import { createItemApi } from '../utils/api';
 
 /**
  * ReportLost Component — Member 1 Responsibility
  * Route: /report-lost
- * Allows students to report a lost campus item.
+ * Allows students to report a lost campus item via the backend API.
  */
 function ReportLost() {
   const [formData, setFormData] = useState({
@@ -16,18 +17,20 @@ function ReportLost() {
     description: '',
     location: '',
     date: '',
-    image: '',
   });
 
+  // Real image file instance for Multer multipart upload
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
   const [imageMeta, setImageMeta] = useState({
     fileName: '',
     fileSize: '',
   });
 
   const [errors, setErrors] = useState({});
-  const [touched, setTouched] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
-  const [isCompressing, setIsCompressing] = useState(false);
+  const [serverError, setServerError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Handle standard input/select/textarea changes
   const handleChange = (e) => {
@@ -41,14 +44,17 @@ function ReportLost() {
     if (successMessage) {
       setSuccessMessage('');
     }
+    if (serverError) {
+      setServerError('');
+    }
   };
 
   // Handle image file selection
-  const handleImageChange = async (e) => {
+  const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate file format and size
+    // Validate file format and size (< 5MB, JPEG/PNG/WebP)
     const { isValid, error: imageErr } = validateImageFile(file);
     if (!isValid) {
       setErrors((prev) => ({ ...prev, image: imageErr }));
@@ -57,30 +63,21 @@ function ReportLost() {
     }
 
     setErrors((prev) => ({ ...prev, image: '' }));
-    setIsCompressing(true);
-
-    try {
-      // Compress and convert to Base64 Data URL for Local Storage compatibility
-      const compressedDataUrl = await compressImage(file);
-      setFormData((prev) => ({ ...prev, image: compressedDataUrl }));
-      setImageMeta({
-        fileName: file.name,
-        fileSize: formatBytes(file.size),
-      });
-    } catch (err) {
-      console.error('Image compression error:', err);
-      setErrors((prev) => ({
-        ...prev,
-        image: 'Failed to process selected image. Please try another file.',
-      }));
-    } finally {
-      setIsCompressing(false);
-    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    setImageMeta({
+      fileName: file.name,
+      fileSize: formatBytes(file.size),
+    });
   };
 
   // Clear selected image
   const handleClearImage = () => {
-    setFormData((prev) => ({ ...prev, image: '' }));
+    setImageFile(null);
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+      setImagePreview('');
+    }
     setImageMeta({ fileName: '', fileSize: '' });
     setErrors((prev) => ({ ...prev, image: '' }));
 
@@ -96,12 +93,15 @@ function ReportLost() {
       description: '',
       location: '',
       date: '',
-      image: '',
     });
+    setImageFile(null);
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+      setImagePreview('');
+    }
     setImageMeta({ fileName: '', fileSize: '' });
     setErrors({});
-    setTouched({});
-    setSuccessMessage('');
+    setServerError('');
 
     const fileInput = document.getElementById('item-image');
     if (fileInput) fileInput.value = '';
@@ -110,16 +110,16 @@ function ReportLost() {
   // Handle blur to trigger field-level validation feedback
   const handleBlur = (e) => {
     const { name } = e.target;
-    setTouched((prev) => ({ ...prev, [name]: true }));
     const { errors: currentErrors } = validateLostForm(formData);
     if (currentErrors[name]) {
       setErrors((prev) => ({ ...prev, [name]: currentErrors[name] }));
     }
   };
 
-  // Form submission handler
-  const handleSubmit = (e) => {
+  // Form submission handler connected to backend API
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setServerError('');
 
     const { isValid, errors: validationErrors } = validateLostForm(formData);
 
@@ -132,30 +132,57 @@ function ReportLost() {
       return;
     }
 
-    // Create standard team item object
-    const newItem = {
-      id: Date.now(),
-      type: 'lost',
-      title: formData.title.trim(),
-      category: formData.category,
-      description: formData.description.trim(),
-      location: formData.location,
-      date: formData.date,
-      image: formData.image || '',
-      status: 'Open',
-      createdBy: 'Student',
-      createdAt: new Date().toISOString(),
-    };
+    setIsSubmitting(true);
 
-    // Save item to campusItems Local Storage
-    addItem(newItem);
+    try {
+      // Build multipart/form-data for backend API
+      const payload = new FormData();
+      payload.append('type', 'lost');
+      payload.append('title', formData.title.trim());
+      payload.append('category', formData.category);
+      payload.append('location', formData.location);
+      payload.append('date', formData.date);
+      payload.append('description', formData.description.trim());
 
-    // Set success banner & reset form fields
-    setSuccessMessage('Lost item reported successfully!');
-    handleResetForm();
+      if (imageFile) {
+        payload.append('image', imageFile);
+      }
 
-    // Scroll smoothly to top of container
-    window.scrollTo({ top: 100, behavior: 'smooth' });
+      // Send request to POST /api/items
+      const response = await createItemApi(payload);
+
+      // Backwards compatibility sync with Local Storage for un-migrated pages (Items, ItemDetails)
+      if (response && response.data) {
+        const serverItem = response.data;
+        addItem({
+          id: serverItem.id || serverItem._id,
+          _id: serverItem._id,
+          type: 'lost',
+          title: serverItem.title,
+          category: serverItem.category,
+          description: serverItem.description,
+          location: serverItem.location,
+          date: serverItem.date,
+          image: serverItem.image || '',
+          status: serverItem.status || 'Open',
+          createdBy: serverItem.createdBy?.name || 'Student',
+          createdAt: serverItem.createdAt || new Date().toISOString(),
+        });
+      }
+
+      // Show success screen and reset form
+      setSuccessMessage('Lost item reported successfully!');
+      handleResetForm();
+
+      // Scroll smoothly to top of container
+      window.scrollTo({ top: 100, behavior: 'smooth' });
+    } catch (err) {
+      console.error('[ReportLost Error]:', err);
+      setServerError(err.message || 'Failed to submit report. Please check your connection and try again.');
+      window.scrollTo({ top: 100, behavior: 'smooth' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const descLength = formData.description.trim().length;
@@ -193,6 +220,25 @@ function ReportLost() {
           </div>
         )}
 
+        {/* Server Error Alert Banner */}
+        {serverError && (
+          <div className="alert alert-error" role="alert">
+            <span className="alert-icon">⚠️</span>
+            <div className="alert-content">
+              <strong className="alert-title">Submission Error</strong>
+              <p className="alert-text">{serverError}</p>
+            </div>
+            <button
+              type="button"
+              className="alert-close"
+              onClick={() => setServerError('')}
+              aria-label="Close notification"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Form Card */}
         <div className="report-lost-card">
           <form onSubmit={handleSubmit} className="report-lost-form" noValidate>
@@ -212,6 +258,7 @@ function ReportLost() {
                 className={`form-control ${errors.title ? 'form-control--error' : ''}`}
                 aria-invalid={!!errors.title}
                 aria-describedby={errors.title ? 'item-title-error' : undefined}
+                disabled={isSubmitting}
               />
               {errors.title && (
                 <span className="field-error" id="item-title-error" role="alert">
@@ -236,6 +283,7 @@ function ReportLost() {
                   className={`form-control ${errors.category ? 'form-control--error' : ''}`}
                   aria-invalid={!!errors.category}
                   aria-describedby={errors.category ? 'item-category-error' : undefined}
+                  disabled={isSubmitting}
                 >
                   <option value="">Select Category</option>
                   {CATEGORIES.map((cat) => (
@@ -265,6 +313,7 @@ function ReportLost() {
                   className={`form-control ${errors.location ? 'form-control--error' : ''}`}
                   aria-invalid={!!errors.location}
                   aria-describedby={errors.location ? 'item-location-error' : undefined}
+                  disabled={isSubmitting}
                 >
                   <option value="">Select Campus Location</option>
                   {LOCATIONS.map((loc) => (
@@ -297,6 +346,7 @@ function ReportLost() {
                 className={`form-control ${errors.date ? 'form-control--error' : ''}`}
                 aria-invalid={!!errors.date}
                 aria-describedby={errors.date ? 'item-date-error' : 'item-date-help'}
+                disabled={isSubmitting}
               />
               <span className="form-helper-text" id="item-date-help">
                 Select the date the item was lost. Future dates are not allowed.
@@ -333,6 +383,7 @@ function ReportLost() {
                 className={`form-control form-textarea ${errors.description ? 'form-control--error' : ''}`}
                 aria-invalid={!!errors.description}
                 aria-describedby={errors.description ? 'item-description-error' : undefined}
+                disabled={isSubmitting}
               ></textarea>
               {errors.description && (
                 <span className="field-error" id="item-description-error" role="alert">
@@ -347,32 +398,28 @@ function ReportLost() {
                 Item Image <span className="optional-tag">(Optional)</span>
               </label>
 
-              {!formData.image ? (
+              {!imagePreview ? (
                 <div className="image-upload-wrapper">
                   <input
                     type="file"
                     id="item-image"
                     name="image"
-                    accept="image/*"
+                    accept="image/jpeg,image/png,image/webp"
                     onChange={handleImageChange}
                     className={`form-control form-file-input ${errors.image ? 'form-control--error' : ''}`}
                     aria-invalid={!!errors.image}
                     aria-describedby={errors.image ? 'item-image-error' : 'item-image-help'}
+                    disabled={isSubmitting}
                   />
                   <span className="form-helper-text" id="item-image-help">
-                    Supported formats: JPG, PNG, WEBP, GIF (Max 5MB).
+                    Supported formats: JPEG, PNG, WebP (Max 5MB).
                   </span>
-                  {isCompressing && (
-                    <p className="image-compress-spinner">
-                      ⏳ Processing and optimizing image...
-                    </p>
-                  )}
                 </div>
               ) : (
                 <div className="image-preview-card">
                   <div className="image-preview-thumbnail-wrapper">
                     <img
-                      src={formData.image}
+                      src={imagePreview}
                       alt="Lost item preview"
                       className="image-preview-thumbnail"
                     />
@@ -387,6 +434,7 @@ function ReportLost() {
                     className="btn-remove-image"
                     title="Remove selected image"
                     aria-label="Remove selected image"
+                    disabled={isSubmitting}
                   >
                     🗑️ Remove
                   </button>
@@ -405,15 +453,15 @@ function ReportLost() {
               <button
                 type="submit"
                 className="btn btn-primary btn-submit"
-                disabled={isCompressing}
+                disabled={isSubmitting}
               >
-                {isCompressing ? 'Processing Image...' : 'Submit Lost Report'}
+                {isSubmitting ? 'Submitting Report...' : 'Submit Lost Report'}
               </button>
               <button
                 type="button"
                 className="btn btn-secondary btn-reset"
                 onClick={handleResetForm}
-                disabled={isCompressing}
+                disabled={isSubmitting}
               >
                 Reset Form
               </button>
