@@ -20,15 +20,17 @@ function ReportLost() {
     image: '',
   });
 
+  const [imageFile, setImageFile] = useState(null);
   const [imageMeta, setImageMeta] = useState({
     fileName: '',
     fileSize: '',
   });
 
   const [errors, setErrors] = useState({});
-  const [, setTouched] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
+  const [serverError, setServerError] = useState('');
   const [isCompressing, setIsCompressing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Handle standard input/select/textarea changes
   const handleChange = (e) => {
@@ -41,6 +43,9 @@ function ReportLost() {
     }
     if (successMessage) {
       setSuccessMessage('');
+    }
+    if (serverError) {
+      setServerError('');
     }
   };
 
@@ -57,6 +62,7 @@ function ReportLost() {
       return;
     }
 
+    setImageFile(file);
     setErrors((prev) => ({ ...prev, image: '' }));
     setIsCompressing(true);
 
@@ -82,6 +88,7 @@ function ReportLost() {
   // Clear selected image
   const handleClearImage = () => {
     setFormData((prev) => ({ ...prev, image: '' }));
+    setImageFile(null);
     setImageMeta({ fileName: '', fileSize: '' });
     setErrors((prev) => ({ ...prev, image: '' }));
 
@@ -99,10 +106,11 @@ function ReportLost() {
       date: '',
       image: '',
     });
+    setImageFile(null);
     setImageMeta({ fileName: '', fileSize: '' });
     setErrors({});
-    setTouched({});
     setSuccessMessage('');
+    setServerError('');
 
     const fileInput = document.getElementById('item-image');
     if (fileInput) fileInput.value = '';
@@ -111,7 +119,6 @@ function ReportLost() {
   // Handle blur to trigger field-level validation feedback
   const handleBlur = (e) => {
     const { name } = e.target;
-    setTouched((prev) => ({ ...prev, [name]: true }));
     const { errors: currentErrors } = validateLostForm(formData);
     if (currentErrors[name]) {
       setErrors((prev) => ({ ...prev, [name]: currentErrors[name] }));
@@ -119,21 +126,23 @@ function ReportLost() {
   };
 
   // Form submission handler
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const { isValid, errors: validationErrors } = validateLostForm(formData);
 
     if (!isValid) {
       setErrors(validationErrors);
-      // Focus first error field for accessibility
       const firstErrorKey = Object.keys(validationErrors)[0];
       const element = document.getElementById(`item-${firstErrorKey}`);
       if (element) element.focus();
       return;
     }
 
-    // Create standard team item object
+    setIsSubmitting(true);
+    setServerError('');
+
+    // Standard item object for Local Storage
     const newItem = {
       id: Date.now(),
       type: 'lost',
@@ -148,21 +157,32 @@ function ReportLost() {
       createdAt: new Date().toISOString(),
     };
 
-    // Save item to campusItems Local Storage
+    // Save to Local Storage for backwards compatibility
     addItem(newItem);
 
-    // Sync to Express backend & MongoDB
+    // Sync to Express backend via FormData or JSON
     try {
-      createItem(newItem);
+      if (imageFile) {
+        const payload = new FormData();
+        payload.append('type', 'lost');
+        payload.append('title', formData.title.trim());
+        payload.append('category', formData.category);
+        payload.append('location', formData.location);
+        payload.append('date', formData.date);
+        payload.append('description', formData.description.trim());
+        payload.append('image', imageFile);
+        await createItem(payload);
+      } else {
+        await createItem(newItem);
+      }
     } catch (err) {
-      console.warn('API sync deferred or failed:', err);
+      console.warn('API sync warning (saved locally):', err);
+    } finally {
+      setIsSubmitting(false);
     }
 
-    // Set success banner & reset form fields
     setSuccessMessage('Lost item reported successfully!');
     handleResetForm();
-
-    // Scroll smoothly to top of container
     window.scrollTo({ top: 100, behavior: 'smooth' });
   };
 
@@ -181,6 +201,13 @@ function ReportLost() {
             Provide details about the item you have lost on campus. Your report will be published so fellow students can help you find it.
           </p>
         </header>
+
+        {/* Server Error Alert */}
+        {serverError && (
+          <div className="alert alert-error" role="alert" style={{ backgroundColor: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
+            <strong>Submission Error: </strong> {serverError}
+          </div>
+        )}
 
         {/* Success Alert Banner */}
         {successMessage && (
@@ -413,15 +440,15 @@ function ReportLost() {
               <button
                 type="submit"
                 className="btn btn-primary btn-submit"
-                disabled={isCompressing}
+                disabled={isCompressing || isSubmitting}
               >
-                {isCompressing ? 'Processing Image...' : 'Submit Lost Report'}
+                {isSubmitting ? 'Submitting Report...' : isCompressing ? 'Processing Image...' : 'Submit Lost Report'}
               </button>
               <button
                 type="button"
                 className="btn btn-secondary btn-reset"
                 onClick={handleResetForm}
-                disabled={isCompressing}
+                disabled={isCompressing || isSubmitting}
               >
                 Reset Form
               </button>
