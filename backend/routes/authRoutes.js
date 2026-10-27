@@ -131,6 +131,31 @@ router.post('/login', async (req, res, next) => {
 router.post('/demo', async (req, res, next) => {
   try {
     const demoEmail = 'student@chitkara.edu.in';
+    const demoPayload = {
+      _id: '507f1f77bcf86cd799439011',
+      name: 'Demo Campus Student',
+      email: demoEmail,
+      role: 'student',
+    };
+
+    // If database is not currently connected, immediately return demo token without buffering
+    if (User.db.readyState !== 1) {
+      const token = signToken(demoPayload);
+      return res.json({
+        success: true,
+        message: 'Demo student authentication token issued (local offline mode)',
+        data: {
+          token,
+          user: {
+            id: demoPayload._id,
+            name: demoPayload.name,
+            email: demoPayload.email,
+            role: demoPayload.role,
+          },
+        },
+      });
+    }
+
     let demoUser = await User.findOne({ email: demoEmail });
 
     if (!demoUser) {

@@ -23,8 +23,8 @@ const router = express.Router();
 router.get('/', getItems);
 router.get('/:id', getItemById);
 
-router.post('/', authenticate, uploadItemImage, createItem);
-router.patch('/:id', authenticate, uploadItemImage, updateItem);
+router.post('/', uploadItemImage, authenticate, createItem);
+router.patch('/:id', uploadItemImage, authenticate, updateItem);
 router.delete('/:id', authenticate, deleteItem);
 
 export default router;
