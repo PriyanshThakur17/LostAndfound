@@ -32,12 +32,14 @@ const ItemDetails = () => {
       try {
         // Try live server API first
         const res = await api.items.getById(id);
-        if (isMounted && res?.item) {
-          setItem(res.item);
+        const loadedItem = res?.data || res?.item;
+        if (isMounted && loadedItem) {
+          setItem(loadedItem);
           setNotFound(false);
           setLoading(false);
           return;
         }
+
       } catch {
         // Fallback to Local Storage
         const localItem = getItemById(id);

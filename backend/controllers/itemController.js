@@ -112,6 +112,7 @@ export const getItemById = async (req, res, next) => {
     return res.json({
       success: true,
       data: item,
+      item,
     });
   } catch (err) {
     next(err);
