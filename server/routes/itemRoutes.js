@@ -7,6 +7,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { createItem, getItems, getItemById } from '../controllers/itemController.js';
+import { getItemClaims } from '../controllers/claimController.js';
 import { requireAuth, optionalAuth } from '../middleware/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -52,6 +53,9 @@ router.get('/', optionalAuth, getItems);
 
 // GET /api/items/:id — get single item
 router.get('/:id', optionalAuth, getItemById);
+
+// GET /api/items/:id/claims — retrieve claims for an item (restricted to owner or admin)
+router.get('/:id/claims', requireAuth, getItemClaims);
 
 // POST /api/items — create item (requires authentication, accepts FormData with 'image')
 router.post('/', requireAuth, upload.single('image'), createItem);

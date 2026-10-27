@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 import itemRoutes from './routes/itemRoutes.js';
-// claimRoutes mounted in next commit
+import claimRoutes from './routes/claimRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import Item from './models/Item.js';
 import { sampleItems } from '../src/data/sampleItems.js';
@@ -51,7 +51,7 @@ app.use('/uploads', express.static(uploadsDir));
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/items', itemRoutes);
-// app.use('/api/claims', claimRoutes);
+app.use('/api/claims', claimRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
