@@ -1,6 +1,6 @@
 # 🎓 Campus Lost & Found Registry — Database & Frontend Integration Documentation
 **Author:** Member 3 (Database Setup, Verification & Browse/Search Integration)  
-**Branch:** `feature/browse-api-integration`  
+**Branch:** `member3`  
 **Database Name:** `campus_lost_found`  
 **Connection String:** `mongodb://127.0.0.1:27017/campus_lost_found`  
 
