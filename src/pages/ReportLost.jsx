@@ -3,6 +3,7 @@ import { CATEGORIES, LOCATIONS } from '../data/sampleItems';
 import { validateLostForm, validateImageFile } from '../utils/validation';
 import { addItem } from '../utils/storage';
 import { compressImage, formatBytes } from '../utils/helpers';
+import { createItem } from '../services/api';
 
 /**
  * ReportLost Component — Member 1 Responsibility
@@ -25,7 +26,7 @@ function ReportLost() {
   });
 
   const [errors, setErrors] = useState({});
-  const [touched, setTouched] = useState({});
+  const [, setTouched] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
   const [isCompressing, setIsCompressing] = useState(false);
 
@@ -149,6 +150,13 @@ function ReportLost() {
 
     // Save item to campusItems Local Storage
     addItem(newItem);
+
+    // Sync to Express backend & MongoDB
+    try {
+      createItem(newItem);
+    } catch (err) {
+      console.warn('API sync deferred or failed:', err);
+    }
 
     // Set success banner & reset form fields
     setSuccessMessage('Lost item reported successfully!');
