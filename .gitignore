@@ -11,9 +11,20 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# Environment files — NEVER commit real secrets
 .env
 .env.*
 !.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# Backend uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
+uploads/*
+!uploads/.gitkeep
 
 # Editor directories and files
 .vscode/*
@@ -25,14 +36,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-# Environment & Backend Uploads
-.env
-.env.*
-!.env.example
-backend/.env
-backend/.env.*
-!backend/.env.example
-backend/uploads/*
-!backend/uploads/.gitkeep
-

@@ -1,8 +1,16 @@
+// ============================================
+// Campus Lost & Found Registry — Unified Express Server
+// ============================================
+// Database: campus_lost_found (Member 3 verified)
+// Backend foundation: Member 4 + Member 1, 2, 3 integrated
+// ============================================
+
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
 import { connectDB } from './config/db.js';
 import itemRoutes from './routes/itemRoutes.js';
 import authRoutes from './routes/authRoutes.js';
@@ -10,7 +18,6 @@ import claimRoutes from './routes/claimRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { UPLOAD_DIR } from './middleware/upload.js';
 
-// Load environment variables
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -23,30 +30,63 @@ const PORT = process.env.PORT || 5000;
 connectDB();
 
 // Global Middlewares
-app.use(cors({ origin: true, credentials: true }));
+app.use(
+  cors({
+    origin: process.env.CLIENT_ORIGIN || true,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Simple cookie parsing middleware
+app.use((req, res, next) => {
+  req.cookies = {};
+  const cookieHeader = req.headers.cookie;
+  if (cookieHeader) {
+    cookieHeader.split(';').forEach((cookie) => {
+      const parts = cookie.split('=');
+      const name = parts[0]?.trim();
+      const val = parts.slice(1).join('=').trim();
+      if (name) {
+        try {
+          req.cookies[name] = decodeURIComponent(val);
+        } catch {
+          req.cookies[name] = val;
+        }
+      }
+    });
+  }
+  next();
+});
 
 // Serve uploaded images statically
 app.use('/uploads', express.static(UPLOAD_DIR));
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
+  const dbState = mongoose.connection.readyState;
+  const dbStatus = dbState === 1 ? 'connected' : 'disconnected';
   res.json({
-    success: true,
+    success: dbState === 1,
     status: 'healthy',
+    server: 'running',
+    database: dbStatus,
+    dbName: 'campus_lost_found',
     timestamp: new Date().toISOString(),
     service: 'Campus Lost & Found Registry API',
-    database: 'campus_lost_found',
   });
 });
 
 // API Routes
-app.use('/api/items', itemRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/items', itemRoutes);
 app.use('/api/claims', claimRoutes);
 
-// 404 handler for unknown routes
+// 404 handler for unknown API routes
 app.use('/api/*', (req, res) => {
   res.status(404).json({
     success: false,
@@ -62,6 +102,7 @@ const isMain = process.argv[1] && path.resolve(fileURLToPath(import.meta.url)) =
 if (isMain && process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
     console.log(`[Server] Campus Lost & Found API running on http://localhost:${PORT}`);
+    console.log(`[Server] Connected database: ${mongoose.connection.name || 'campus_lost_found'}`);
   });
 }
 
