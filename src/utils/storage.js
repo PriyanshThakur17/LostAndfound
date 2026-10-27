@@ -1,32 +1,38 @@
 // ============================================
 // Campus Lost & Found — Shared Storage Utility
 // ============================================
-import { sampleItems } from '../data/sampleItems';
 
 export const STORAGE_KEY = 'campusItems';
 
 /**
  * Reads all items from Local Storage (`campusItems`).
- * If empty or null, seeds initial sample items.
+ * If empty or null, returns empty array.
  */
 export const getItems = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleItems));
-      return sampleItems;
+      return [];
     }
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(sampleItems));
-      return sampleItems;
+    if (!Array.isArray(parsed)) {
+      return [];
     }
-    return parsed;
+    // Filter out initial legacy dummy items (IDs 1 through 10)
+    const cleaned = parsed.filter(
+      (item) => item && (typeof item.id !== 'number' || item.id > 100)
+    );
+    if (cleaned.length !== parsed.length) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
+    }
+    return cleaned;
   } catch (error) {
     console.error('Error reading from Local Storage:', error);
-    return sampleItems;
+    return [];
   }
 };
+
+
 
 /**
  * Saves item array to Local Storage under `campusItems`.
