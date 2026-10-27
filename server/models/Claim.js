@@ -1,70 +1,69 @@
-const mongoose = require('mongoose');
+// ============================================
+// Claim Model (Mongoose) — Member 2 Responsibility
+// ============================================
+import mongoose from 'mongoose';
 
 const claimSchema = new mongoose.Schema(
   {
-    itemId: {
+    item: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Item',
-      required: [true, 'Associated Item ID is required'],
+      required: [true, 'Item reference is required'],
+      index: true,
+    },
+    claimant: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: [true, 'Claimant reference is required'],
+      index: true,
     },
     claimType: {
       type: String,
-      enum: ['ownership_verification', 'found_item_report'],
-      default: 'ownership_verification',
-    },
-    contactName: {
-      type: String,
-      required: [true, 'Contact name is required'],
-      trim: true,
-    },
-    // Ownership verification fields (for found items being claimed)
-    itemColor: {
-      type: String,
-      trim: true,
-      default: '',
-    },
-    uniqueFeature: {
-      type: String,
-      trim: true,
-      default: '',
-    },
-    lostLocation: {
-      type: String,
-      trim: true,
-      default: '',
-    },
-    // Found item report fields (for lost items reported found by finder)
-    foundLocation: {
-      type: String,
-      trim: true,
-      default: '',
-    },
-    foundDate: {
-      type: String,
-      default: '',
-    },
-    additionalInfo: {
-      type: String,
-      trim: true,
-      default: '',
+      enum: ['ownership_claim', 'found_report'],
+      default: 'ownership_claim',
     },
     status: {
       type: String,
-      enum: ['Pending', 'Verified', 'Rejected'],
+      enum: ['Pending', 'Approved', 'Rejected'],
       default: 'Pending',
+      index: true,
     },
-    user: {
+    verificationAnswers: {
+      // For ownership verification on found items
+      itemColor: { type: String, trim: true, default: '' },
+      uniqueFeature: { type: String, trim: true, default: '' },
+      lostLocation: { type: String, trim: true, default: '' },
+
+      // For finder reports on lost items
+      foundLocation: { type: String, trim: true, default: '' },
+      foundDate: { type: String, trim: true, default: '' },
+      additionalInfo: { type: String, trim: true, default: '' },
+
+      // Contact identifier for communication
+      contactName: { type: String, trim: true, required: true },
+    },
+    reviewedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: false,
+      default: null,
+    },
+    reviewedAt: {
+      type: Date,
+      default: null,
+    },
+    reviewNotes: {
+      type: String,
+      trim: true,
+      default: '',
     },
   },
   {
     timestamps: true,
-    collection: 'claims',
   }
 );
 
-claimSchema.index({ itemId: 1 });
+// Prevent duplicate Pending claims from the same claimant on the same item
+claimSchema.index({ item: 1, claimant: 1, status: 1 });
 
-module.exports = mongoose.model('Claim', claimSchema);
+const Claim = mongoose.models.Claim || mongoose.model('Claim', claimSchema);
+export default Claim;

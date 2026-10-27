@@ -1,16 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import StatusBadge from '../components/StatusBadge';
 import VerificationForm from '../components/VerificationForm';
-import { getItemById, createClaim } from '../services/api';
+import { getItemById, updateItem } from '../utils/storage';
 import { CATEGORY_ICONS } from '../data/sampleItems';
+import api, { getAuthToken } from '../api/client';
 
 /**
- * ItemDetails — Detailed view & claim submission (Member 3 & Member 4 integration).
+ * ItemDetails — Item Details & Connected Claim Verification Page
  * Route: /item/:id
- *
- * Reads item MongoDB _id from URL, loads via GET /api/items/:id,
- * and submits ownership verification via POST /api/claims.
  */
 const ItemDetails = () => {
   const { id } = useParams();
@@ -18,69 +16,73 @@ const ItemDetails = () => {
 
   const [item, setItem] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [claimed, setClaimed] = useState(false);
-  const [claimError, setClaimError] = useState(null);
-  const [submittingClaim, setSubmittingClaim] = useState(false);
-  const [reloadTrigger, setReloadTrigger] = useState(0);
+  const [submittedClaim, setSubmittedClaim] = useState(null);
+  const [itemClaims, setItemClaims] = useState([]);
+  const [isReviewing, setIsReviewing] = useState(false);
+  const [reviewMessage, setReviewMessage] = useState('');
 
-  // Load item details from Express backend with cleanup
+  // Load item from API or fallback Local Storage
   useEffect(() => {
     let isMounted = true;
 
-    async function fetchItemDetails() {
+    async function loadItemData() {
+      setLoading(true);
       try {
-        const data = await getItemById(id);
-        if (!isMounted) return;
-        if (data) {
-          setItem(data);
+        // Try live server API first
+        const res = await api.items.getById(id);
+        if (isMounted && res?.item) {
+          setItem(res.item);
           setNotFound(false);
-          setError(null);
-        } else {
-          setNotFound(true);
+          setLoading(false);
+          return;
         }
-      } catch (err) {
-        if (!isMounted) return;
-        if (err.message && (err.message.includes('not found') || err.message.includes('404'))) {
-          setNotFound(true);
-        } else {
-          setError(err.message || 'Unable to connect to registry server.');
-        }
-      } finally {
+      } catch {
+        // Fallback to Local Storage
+        const localItem = getItemById(id);
         if (isMounted) {
+          if (localItem) {
+            setItem(localItem);
+            setNotFound(false);
+          } else {
+            setNotFound(true);
+          }
           setLoading(false);
         }
       }
     }
 
-    fetchItemDetails();
-
+    loadItemData();
     return () => {
       isMounted = false;
     };
-  }, [id, reloadTrigger]);
+  }, [id]);
 
-  const handleRetry = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    setReloadTrigger((prev) => prev + 1);
-  }, []);
+  // Fetch claims for this item if user is authenticated
+  useEffect(() => {
+    if (!item || !getAuthToken()) return;
+
+    const itemId = item._id || item.id;
+    api.claims.getItemClaims(itemId)
+      .then((res) => {
+        if (res?.claims) {
+          setItemClaims(res.claims);
+        }
+      })
+      .catch(() => {
+        // User may not be authorized to view all claims for this item, which is expected
+      });
+  }, [item]);
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Unknown date';
     const options = { day: '2-digit', month: 'short', year: 'numeric' };
-    try {
-      return new Date(dateString).toLocaleDateString('en-GB', options);
-    } catch {
-      return dateString;
-    }
+    return new Date(dateString).toLocaleDateString('en-GB', options);
   };
 
   const handleActionClick = () => {
     setShowForm(true);
-    setClaimError(null);
     setTimeout(() => {
       document.getElementById('verification-section')?.scrollIntoView({
         behavior: 'smooth',
@@ -89,68 +91,63 @@ const ItemDetails = () => {
     }, 100);
   };
 
-  // Submit claim to POST /api/claims and confirm success only after backend response
-  const handleVerificationSuccess = async (formData) => {
-    setSubmittingClaim(true);
-    setClaimError(null);
+  // Called when VerificationForm submits to POST /api/claims
+  const handleVerificationSuccess = (claim) => {
+    setShowForm(false);
+    setSubmittedClaim(claim);
 
-    try {
-      const payload = {
-        itemId: item._id || item.id,
-        ...formData,
-      };
-
-      const result = await createClaim(payload);
-
-      if (result && result.success) {
-        setItem((prev) => ({ ...prev, status: 'Claimed' }));
-        setShowForm(false);
-        setClaimed(true);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      } else {
-        throw new Error(result?.message || 'Verification could not be processed.');
-      }
-    } catch (err) {
-      console.error('Claim submission error:', err);
-      setClaimError(err.message || 'Failed to submit claim to server. Please try again.');
-    } finally {
-      setSubmittingClaim(false);
-    }
+    // Prompt rule: "Do not mark an item Claimed merely because a claim was submitted.
+    // A claim should be Pending until reviewed. Change the item status to Claimed only after an authorized approval."
+    // Status remains consistent:
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleCancel = () => {
     setShowForm(false);
-    setClaimError(null);
+  };
+
+  // Handle authorized approval or rejection of a pending claim
+  const handleReviewClaim = async (claimId, newStatus) => {
+    setIsReviewing(true);
+    setReviewMessage('');
+
+    try {
+      const res = await api.claims.updateStatus(claimId, {
+        status: newStatus,
+        reviewNotes: `Reviewed and ${newStatus.toLowerCase()} via Item Details panel.`,
+      });
+
+      if (res?.success) {
+        setReviewMessage(`Claim has been ${newStatus.toLowerCase()} successfully.`);
+
+        // If approved, update item status to 'Claimed'
+        if (newStatus === 'Approved') {
+          setItem((prev) => ({ ...prev, status: 'Claimed' }));
+          updateItem(item.id || item._id, { status: 'Claimed' });
+        }
+
+        // Refresh claims list
+        const itemId = item._id || item.id;
+        const updated = await api.claims.getItemClaims(itemId).catch(() => null);
+        if (updated?.claims) {
+          setItemClaims(updated.claims);
+        }
+      }
+    } catch (err) {
+      console.error('Error reviewing claim:', err);
+      setReviewMessage(`Failed to update claim: ${err.message}`);
+    } finally {
+      setIsReviewing(false);
+    }
   };
 
   // ---------------- Loading State ----------------
   if (loading) {
     return (
       <main className="page">
-        <div className="loading-card" role="status" aria-live="polite">
-          <div className="loading-spinner" aria-label="Loading item details…" />
-          <p>Loading item details from database…</p>
-        </div>
-      </main>
-    );
-  }
-
-  // ---------------- Error State with Retry ----------------
-  if (error) {
-    return (
-      <main className="page">
-        <div className="not-found-card status-container--error" role="alert">
-          <div className="not-found-icon">⚠️</div>
-          <h2 className="not-found-title">Failed to Load Item</h2>
-          <p className="not-found-message">{error}</p>
-          <div className="not-found-actions">
-            <button type="button" className="btn btn--primary" onClick={handleRetry}>
-              🔄 Retry Request
-            </button>
-            <button type="button" className="btn btn--outline" onClick={() => navigate(-1)}>
-              ← Go Back
-            </button>
-          </div>
+        <div className="loading-card">
+          <div className="loading-spinner" aria-label="Loading item details…"></div>
+          <p>Loading item details…</p>
         </div>
       </main>
     );
@@ -164,7 +161,7 @@ const ItemDetails = () => {
           <div className="not-found-icon">🔍</div>
           <h2 className="not-found-title">Item Not Found</h2>
           <p className="not-found-message">
-            The item you're looking for does not exist in the database or may have been removed.
+            The item you are looking for does not exist or may have been removed from the registry.
           </p>
           <div className="not-found-actions">
             <Link to="/lost-items" className="btn btn--outline">
@@ -179,44 +176,13 @@ const ItemDetails = () => {
     );
   }
 
-  // ---------------- Success State (Post-Claim) ----------------
-  if (claimed) {
-    return (
-      <main className="page">
-        <div className="success-card">
-          <div className="success-icon">✅</div>
-          <h2 className="success-title">Verification Submitted to Database!</h2>
-          <p className="success-message">
-            Your claim information has been confirmed by the server for{' '}
-            <strong>{item.title}</strong>.
-          </p>
-          <div className="success-status">
-            Item Status: <StatusBadge status="Claimed" size="md" />
-          </div>
-          <p className="success-note">
-            The registry server has recorded your verification details. The campus coordinator will follow up with you.
-          </p>
-          <div className="success-actions">
-            <Link to="/lost-items" className="btn btn--outline">
-              Browse Lost Items
-            </Link>
-            <Link to="/found-items" className="btn btn--primary">
-              Browse Found Items
-            </Link>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  // ---------------- Main Details View ----------------
   const { type, title, category, description, location, date, image, status, createdBy, createdAt } = item;
 
   const actionLabel = type === 'lost' ? '📦 I Found This Item' : '🔐 This Is My Item';
   const actionDesc =
     type === 'lost'
-      ? 'Found this item? Help the owner get it back.'
-      : 'Lost this item? Verify your ownership to claim it.';
+      ? 'Found this item? Help the owner get it back by submitting details.'
+      : 'Lost this item? Verify your ownership details to initiate a claim.';
 
   const categoryIcon = CATEGORY_ICONS[category] || '📦';
   const typeBadgeClass = type === 'lost' ? 'type-badge type-badge--lost' : 'type-badge type-badge--found';
@@ -231,19 +197,36 @@ const ItemDetails = () => {
         </button>
       </div>
 
+      {/* Submitted Claim Alert (Pending Review) */}
+      {submittedClaim && (
+        <div className="success-card" style={{ maxWidth: '800px', margin: '0 auto 1.5rem', textAlign: 'left', alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '1.75rem' }}>⏳</span>
+            <h2 className="success-title" style={{ margin: 0, fontSize: '1.25rem', color: '#1E40AF' }}>
+              Verification Submitted (Pending Review)
+            </h2>
+          </div>
+          <p className="success-message" style={{ margin: '0.25rem 0 0.75rem', textAlign: 'left' }}>
+            Your details for <strong>{title}</strong> have been recorded under Claim ID #{String(submittedClaim._id || submittedClaim.id).slice(-6)}.
+          </p>
+          <div className="success-status" style={{ margin: '0.25rem 0' }}>
+            Claim Status: <StatusBadge status="Pending" size="sm" />
+            <span style={{ marginLeft: '1rem', color: 'var(--color-muted)' }}>
+              Item Status: <StatusBadge status={status} size="sm" />
+            </span>
+          </div>
+          <p className="success-note" style={{ margin: '0.5rem 0 0', maxWidth: 'none', fontSize: '0.85rem' }}>
+            ℹ️ As per registry policy, items remain in their current status until the owner or an administrator reviews and approves the claim.
+          </p>
+        </div>
+      )}
+
       {/* Main Details Card */}
       <div className="item-details-card">
         {/* Left: Image Panel */}
         <div className="item-image-panel">
           {image ? (
-            <img
-              src={image}
-              alt={`Image of ${title}`}
-              className="item-image"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-              }}
-            />
+            <img src={image} alt={`Photo of ${title}`} className="item-image" />
           ) : (
             <div className="item-image-placeholder" aria-label="No image available">
               <span className="placeholder-icon">{categoryIcon}</span>
@@ -307,35 +290,23 @@ const ItemDetails = () => {
             <StatusBadge status={status} size="md" />
           </div>
 
-          {/* Claim Submission Error Message */}
-          {claimError && (
-            <div className="claim-error-banner" role="alert">
-              ⚠️ {claimError}
-            </div>
-          )}
-
           {/* Actions based on Status */}
           {status === 'Open' && (
             <div className="item-action">
               <p className="action-description">{actionDesc}</p>
-              <button
-                className="action-btn"
-                onClick={handleActionClick}
-                disabled={submittingClaim}
-                aria-label={actionLabel}
-              >
-                {submittingClaim ? '⏳ Submitting…' : actionLabel}
+              <button className="action-btn" onClick={handleActionClick} aria-label={actionLabel}>
+                {actionLabel}
               </button>
             </div>
           )}
 
-          {status === 'Claimed' && !claimed && (
+          {status === 'Claimed' && (
             <div className="claimed-notice">
               <span className="claimed-icon">✅</span>
               <div>
-                <p className="claimed-title">This item has been claimed.</p>
+                <p className="claimed-title">This item has been successfully claimed.</p>
                 <p className="claimed-subtitle">
-                  If you believe this is yours, please contact the campus registry office directly.
+                  The ownership verification was approved by the registry.
                 </p>
               </div>
             </div>
@@ -347,7 +318,7 @@ const ItemDetails = () => {
               <div>
                 <p className="archived-title">This item has been archived.</p>
                 <p className="archived-subtitle">
-                  This listing is no longer active. Please visit the registry office for assistance.
+                  This report is no longer active in the campus registry.
                 </p>
               </div>
             </div>
@@ -355,14 +326,79 @@ const ItemDetails = () => {
         </div>
       </div>
 
-      {/* Verification Form */}
+      {/* Review Claims Panel (Item Owner / Administrator Review Interface) */}
+      {itemClaims.length > 0 && (
+        <section className="claims-review-card" style={{ marginTop: '2rem', padding: '1.5rem', background: '#FFFFFF', border: '1px solid var(--color-border)', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
+          <h2 style={{ fontSize: '1.15rem', color: 'var(--color-primary)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span>📋</span> Submitted Verifications ({itemClaims.length})
+          </h2>
+
+          {reviewMessage && (
+            <div className="alert alert-info" style={{ marginBottom: '1rem' }}>
+              <p className="alert-text">{reviewMessage}</p>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {itemClaims.map((cl) => {
+              const answers = cl.verificationAnswers || {};
+              const clId = cl._id || cl.id;
+              const isPending = cl.status === 'Pending';
+
+              return (
+                <div key={clId} style={{ padding: '1rem', border: '1px solid var(--color-border)', borderRadius: '8px', background: '#F8FAFC' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <div>
+                      <strong>{answers.contactName || 'Claimant'}</strong>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--color-muted)', marginLeft: '0.5rem' }}>
+                        ({formatDate(cl.createdAt)})
+                      </span>
+                    </div>
+                    <StatusBadge status={cl.status} size="sm" />
+                  </div>
+
+                  <div style={{ fontSize: '0.85rem', color: 'var(--color-text)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                    {answers.itemColor && <div><strong>Color:</strong> {answers.itemColor}</div>}
+                    {answers.uniqueFeature && <div><strong>Feature:</strong> {answers.uniqueFeature}</div>}
+                    {answers.lostLocation && <div><strong>Lost at:</strong> {answers.lostLocation}</div>}
+                    {answers.foundLocation && <div><strong>Found at:</strong> {answers.foundLocation}</div>}
+                    {answers.foundDate && <div><strong>Found date:</strong> {formatDate(answers.foundDate)}</div>}
+                    {answers.additionalInfo && <div><strong>Notes:</strong> {answers.additionalInfo}</div>}
+                  </div>
+
+                  {isPending && status !== 'Claimed' && (
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                      <button
+                        type="button"
+                        className="btn btn--outline"
+                        style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem' }}
+                        onClick={() => handleReviewClaim(clId, 'Rejected')}
+                        disabled={isReviewing}
+                      >
+                        ✕ Reject
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--primary"
+                        style={{ padding: '0.4rem 0.85rem', fontSize: '0.85rem' }}
+                        onClick={() => handleReviewClaim(clId, 'Approved')}
+                        disabled={isReviewing}
+                      >
+                        ✓ Approve Claim
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Verification Form Section */}
       {showForm && (
         <section id="verification-section" className="verification-section">
-          <VerificationForm
-            item={item}
-            onSuccess={handleVerificationSuccess}
-            onCancel={handleCancel}
-          />
+          <VerificationForm item={item} onSuccess={handleVerificationSuccess} onCancel={handleCancel} />
         </section>
       )}
     </main>

@@ -1,50 +1,83 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const connectDB = require('./config/db');
+// ============================================
+// Campus Lost & Found Registry — Express Server
+// ============================================
+import express from 'express';
+import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+import connectDB from './config/db.js';
+import itemRoutes from './routes/itemRoutes.js';
+import claimRoutes from './routes/claimRoutes.js';
+import authRoutes from './routes/authRoutes.js';
+import Item from './models/Item.js';
+import { sampleItems } from '../src/data/sampleItems.js';
 
-// Route handlers
-const itemRoutes = require('./routes/itemRoutes');
-const claimRoutes = require('./routes/claimRoutes');
-const userRoutes = require('./routes/userRoutes');
+dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Connect to MongoDB Community Server (database: campus_lost_found)
-connectDB();
+// Connect to MongoDB
+connectDB().then(async (conn) => {
+  if (conn) {
+    try {
+      const count = await Item.countDocuments();
+      if (count === 0) {
+        console.log('[MongoDB] Seeding initial sample items into database...');
+        // Strip out the mock numerical IDs so Mongo generates valid ObjectIds
+        const cleanSampleItems = sampleItems.map(({ id: _id, ...rest }) => rest);
+        await Item.insertMany(cleanSampleItems);
+        console.log(`[MongoDB] Successfully seeded ${cleanSampleItems.length} items.`);
+      }
+    } catch (seedErr) {
+      console.warn('[MongoDB Warning] Could not seed sample items:', seedErr.message);
+    }
+  }
+});
 
-// Middleware
+// Middlewares
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Health Check
+// Serve static uploaded images
+const uploadsDir = path.join(__dirname, '../uploads');
+app.use('/uploads', express.static(uploadsDir));
+
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/items', itemRoutes);
+app.use('/api/claims', claimRoutes);
+
+// Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    database: 'campus_lost_found',
     timestamp: new Date().toISOString(),
+    service: 'Campus Lost & Found Registry API',
   });
 });
 
-// API Routes
-app.use('/api/items', itemRoutes);
-app.use('/api/claims', claimRoutes);
-app.use('/api/users', userRoutes);
-
-// 404 handler for unknown routes
-app.use((req, res) => {
-  res.status(404).json({
+// Centralized error handling middleware
+app.use((err, req, res, _next) => {
+  console.error('Unhandled server error:', err);
+  const statusCode = res.statusCode !== 200 ? res.statusCode : 500;
+  res.status(statusCode).json({
     success: false,
-    message: `API endpoint not found: ${req.method} ${req.originalUrl}`,
+    error: err.message || 'Internal Server Error',
+    stack: process.env.NODE_ENV === 'production' ? null : err.stack,
   });
 });
 
-// Start Express server
-const server = app.listen(PORT, () => {
-  console.log(`[Express] Campus Lost & Found backend listening on port ${PORT}`);
-  console.log(`[Express] Connected to MongoDB: ${process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/campus_lost_found'}`);
+app.listen(PORT, () => {
+  console.log(`===============================================`);
+  console.log(`🚀 Lost & Found API Server running on port ${PORT}`);
+  console.log(`📡 Health Check: http://localhost:${PORT}/api/health`);
+  console.log(`===============================================`);
 });
 
-module.exports = { app, server };
+export default app;

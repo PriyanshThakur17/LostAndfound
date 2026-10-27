@@ -32,8 +32,6 @@ export const getItems = () => {
   }
 };
 
-
-
 /**
  * Saves item array to Local Storage under `campusItems`.
  */
@@ -57,12 +55,13 @@ export const addItem = (newItem) => {
 
 /**
  * Finds a single item by its ID.
+ * Supports both legacy numeric id and MongoDB ObjectId (_id).
  * @param {number|string} id
  * @returns {Object|null}
  */
 export const getItemById = (id) => {
   const items = getItems();
-  return items.find((item) => String(item.id) === String(id)) || null;
+  return items.find((item) => String(item.id || item._id) === String(id)) || null;
 };
 
 /**
@@ -73,7 +72,7 @@ export const getItemById = (id) => {
 export const updateItem = (id, changes) => {
   const items = getItems();
   const updatedItems = items.map((currentItem) =>
-    String(currentItem.id) === String(id)
+    String(currentItem.id || currentItem._id) === String(id)
       ? { ...currentItem, ...changes }
       : currentItem
   );

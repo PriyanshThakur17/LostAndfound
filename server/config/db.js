@@ -1,29 +1,22 @@
-const mongoose = require('mongoose');
+// ============================================
+// Database Connection Configuration (MongoDB / Mongoose)
+// ============================================
+import mongoose from 'mongoose';
 
-/**
- * Connect to MongoDB Community Server.
- * Intended connection URI: mongodb://127.0.0.1:27017/campus_lost_found
- */
 const connectDB = async () => {
-  const uri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/campus_lost_found';
+  const mongoURI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/campus_lost_found';
 
   try {
-    const conn = await mongoose.connect(uri);
-
-    console.log(`[MongoDB] Connected to database: ${conn.connection.name} at ${conn.connection.host}:${conn.connection.port}`);
+    const conn = await mongoose.connect(mongoURI, {
+      serverSelectionTimeoutMS: 3000,
+    });
+    console.log(`[MongoDB] Connected successfully: ${conn.connection.host}/${conn.connection.name}`);
     return conn;
-  } catch (error) {
-    console.error(`[MongoDB] Connection error: ${error.message}`);
-    process.exit(1);
+  } catch (err) {
+    console.warn(`[MongoDB Warning] Could not connect to MongoDB at ${mongoURI}: ${err.message}`);
+    console.warn(`[MongoDB Warning] Running with offline data resilience. Start MongoDB Compass / mongod on port 27017 to persist live database records.`);
+    return null;
   }
 };
 
-mongoose.connection.on('disconnected', () => {
-  console.warn('[MongoDB] Disconnected from server');
-});
-
-mongoose.connection.on('reconnected', () => {
-  console.log('[MongoDB] Reconnected to server');
-});
-
-module.exports = connectDB;
+export default connectDB;

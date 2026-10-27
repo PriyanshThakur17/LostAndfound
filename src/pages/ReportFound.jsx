@@ -1,408 +1,487 @@
-// ============================================
-// Campus Lost & Found — ReportFound Page (Member 2)
-// ============================================
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { CATEGORIES, LOCATIONS } from '../data/sampleItems';
+import { validateFoundForm, validateImageFile } from '../utils/validation';
 import { addItem } from '../utils/storage';
-import { createItem } from '../services/api';
+import { formatBytes } from '../utils/helpers';
+import api, { getAuthToken, setAuthToken, setStoredUser } from '../api/client';
+import './ReportFound.css';
 
-const ReportFound = () => {
-  // Controlled form state
+/**
+ * ReportFound Component — Member 2 Responsibility
+ * Route: /report-found
+ * Allows campus members to report a found belonging via shared POST /api/items.
+ */
+function ReportFound() {
   const [formData, setFormData] = useState({
     title: '',
     category: '',
     description: '',
-    date: '',
     location: '',
-    currentLocation: '',
-    contact: '',
-    image: '',
+    date: '',
   });
 
-  // State for image preview thumbnail
-  const [imagePreview, setImagePreview] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState('');
+  const [imageMeta, setImageMeta] = useState({ fileName: '', fileSize: '' });
 
-  // Form validation errors
   const [errors, setErrors] = useState({});
+  const [successMessage, setSuccessMessage] = useState('');
+  const [serverError, setServerError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(getAuthToken()));
+  const [currentUser, setCurrentUser] = useState(() => api.auth.getCurrentUser() || (getAuthToken() ? { name: 'Student' } : null));
 
-  // Submission success status
-  const [isSubmitted, setIsSubmitted] = useState(false);
-
-  // Today's date YYYY-MM-DD for date input max attribute
-  const todayDate = new Date().toISOString().split('T')[0];
-
-  // Handle controlled input changes
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: null,
-      }));
+  // One-click demo login helper
+  const handleDemoSignIn = async () => {
+    try {
+      const res = await api.auth.getDemoToken();
+      setIsAuthenticated(true);
+      setCurrentUser(res.user);
+      setServerError('');
+    } catch {
+      // Fallback local mock token if server is offline
+      const mockToken = 'demo-student-token';
+      const mockUser = { id: '64f1a2b3c4d5e6f7a8b9c0d1', name: 'Demo Student', email: 'student@chitkara.edu.in', role: 'student' };
+      setAuthToken(mockToken);
+      setStoredUser(mockUser);
+      setIsAuthenticated(true);
+      setCurrentUser(mockUser);
     }
   };
 
-  // Handle Image upload and FileReader DataURL conversion
+  // Handle text/select changes
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: '' }));
+    }
+    if (serverError) setServerError('');
+    if (successMessage) setSuccessMessage('');
+  };
+
+  // Handle file selection (creates object URL preview, no Base64!)
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate file type
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (!validTypes.includes(file.type.toLowerCase())) {
-      setErrors((prev) => ({
-        ...prev,
-        image: 'Please upload a valid image file (JPG, PNG, or WEBP).',
-      }));
+    const { isValid, error: imageErr } = validateImageFile(file);
+    if (!isValid) {
+      setErrors((prev) => ({ ...prev, image: imageErr }));
+      e.target.value = '';
       return;
     }
 
-    // Validate max file size (5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setErrors((prev) => ({
-        ...prev,
-        image: 'Image size exceeds the 5MB limit.',
-      }));
-      return;
-    }
-
-    setErrors((prev) => ({ ...prev, image: null }));
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const dataUrl = reader.result;
-      setImagePreview(dataUrl);
-      setFormData((prev) => ({
-        ...prev,
-        image: dataUrl,
-      }));
-    };
-    reader.readAsDataURL(file);
+    setErrors((prev) => ({ ...prev, image: '' }));
+    setSelectedFile(file);
+    setImagePreviewUrl(URL.createObjectURL(file));
+    setImageMeta({
+      fileName: file.name,
+      fileSize: formatBytes(file.size),
+    });
   };
 
-  // Remove uploaded image
-  const handleRemoveImage = () => {
-    setImagePreview('');
-    setFormData((prev) => ({ ...prev, image: '' }));
-    const fileInput = document.getElementById('found-image-input');
+  // Clear selected image
+  const handleClearImage = () => {
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl);
+    }
+    setSelectedFile(null);
+    setImagePreviewUrl('');
+    setImageMeta({ fileName: '', fileSize: '' });
+    setErrors((prev) => ({ ...prev, image: '' }));
+
+    const fileInput = document.getElementById('found-item-image');
     if (fileInput) fileInput.value = '';
   };
 
-  // Form Validation logic
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.title || !formData.title.trim()) {
-      newErrors.title = 'Item name is required.';
-    } else if (formData.title.trim().length < 2) {
-      newErrors.title = 'Item name must be at least 2 characters.';
-    }
-
-    if (!formData.category) {
-      newErrors.category = 'Please select an item category.';
-    }
-
-    if (!formData.location) {
-      newErrors.location = 'Please select the location where the item was found.';
-    }
-
-    if (!formData.date) {
-      newErrors.date = 'Found date is required.';
-    } else if (new Date(formData.date) > new Date()) {
-      newErrors.date = 'Found date cannot be in the future.';
-    }
-
-    if (!formData.description || !formData.description.trim()) {
-      newErrors.description = 'Item description is required.';
-    } else if (formData.description.trim().length < 10) {
-      newErrors.description = 'Please enter at least 10 characters describing the item.';
-    }
-
-    if (!formData.currentLocation || !formData.currentLocation.trim()) {
-      newErrors.currentLocation = 'Please specify where the item is currently kept or handed over.';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  // Handle Form Submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
-
-    const newItem = {
-      id: Date.now(),
-      type: 'found',
-      title: formData.title.trim(),
-      category: formData.category,
-      description: formData.description.trim(),
-      location: formData.location,
-      date: formData.date,
-      currentLocation: formData.currentLocation.trim(),
-      contact: formData.contact ? formData.contact.trim() : 'Campus Security Desk',
-      image: formData.image,
-      status: 'Open',
-      createdBy: 'Student',
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-
-    // Save to local storage for backward compatibility
-    addItem(newItem);
-
-    // Sync to Express backend & MongoDB
-    try {
-      await createItem(newItem);
-    } catch (err) {
-      console.warn('API sync deferred or failed:', err);
-    }
-
-    setIsSubmitted(true);
-  };
-
-  const handleReportAnother = () => {
+  // Reset form
+  const handleResetForm = () => {
     setFormData({
       title: '',
       category: '',
       description: '',
-      date: '',
       location: '',
-      currentLocation: '',
-      contact: '',
-      image: '',
+      date: '',
     });
-    setImagePreview('');
+    handleClearImage();
     setErrors({});
-    setIsSubmitted(false);
   };
 
-  return (
-    <main className="page">
-      <div className="page__header">
-        <h1 className="page__title">Report a Found Item</h1>
-        <p className="page__subtitle">
-          Help reunite a lost belonging with its owner by providing accurate details.
-        </p>
-      </div>
+  // Form submit handler
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setServerError('');
+    setSuccessMessage('');
 
-      {isSubmitted ? (
-        <div className="card success-card">
-          <div className="success-card__icon">✓</div>
-          <h2 className="success-card__title">Found item reported successfully!</h2>
-          <p className="success-card__message">
-            Thank you for helping reunite this item with its owner. Your report has been added to the campus registry.
+    // Require authentication check
+    if (!getAuthToken()) {
+      setServerError('Authentication is required to report a found item. Please sign in or use the 1-Click Demo Login above.');
+      window.scrollTo({ top: 120, behavior: 'smooth' });
+      return;
+    }
+
+    // Client-side validation
+    const { isValid, errors: validationErrors } = validateFoundForm(formData);
+    if (!isValid) {
+      setErrors(validationErrors);
+      const firstError = Object.keys(validationErrors)[0];
+      const elem = document.getElementById(`found-${firstError}`);
+      if (elem) elem.focus();
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Build FormData payload (as required: type=found, FormData upload, no Base64)
+      const payload = new FormData();
+      payload.append('title', formData.title.trim());
+      payload.append('type', 'found');
+      payload.append('category', formData.category);
+      payload.append('description', formData.description.trim());
+      payload.append('location', formData.location);
+      payload.append('date', formData.date);
+
+      if (selectedFile) {
+        payload.append('image', selectedFile);
+      }
+
+      // Submit to shared POST /api/items endpoint
+      const response = await api.items.create(payload);
+
+      // Save to local storage for backward compatibility with items listing
+      if (response?.item) {
+        const itemForStorage = {
+          id: response.item._id || response.item.id || Date.now(),
+          type: 'found',
+          title: response.item.title,
+          category: response.item.category,
+          description: response.item.description,
+          location: response.item.location,
+          date: response.item.date,
+          image: response.item.image || '',
+          status: 'Open',
+          createdBy: response.item.createdBy || currentUser?.name || 'Student',
+          createdAt: response.item.createdAt || new Date().toISOString(),
+        };
+        addItem(itemForStorage);
+      }
+
+      // Display success ONLY after a successful server response
+      setSuccessMessage('Found item reported successfully! Your submission is now recorded.');
+      handleResetForm();
+      window.scrollTo({ top: 80, behavior: 'smooth' });
+    } catch (err) {
+      console.error('Failed to report found item:', err);
+      setServerError(err.message || 'Failed to submit report to server. Please try again.');
+      window.scrollTo({ top: 80, behavior: 'smooth' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const descLength = formData.description.trim().length;
+
+  return (
+    <main className="report-found-page page">
+      <div className="report-found-container container">
+        {/* Header */}
+        <header className="report-found-header">
+          <div className="report-found-icon-wrapper">
+            <span className="report-found-badge-icon">🟢</span>
+          </div>
+          <h1 className="report-found-title">Report Found Item</h1>
+          <p className="report-found-subtitle">
+            Found an item on campus? Help return it to its rightful owner by recording the details here.
           </p>
-          <div className="form-actions">
+        </header>
+
+        {/* Authentication Notice Banner */}
+        {!isAuthenticated && (
+          <div className="auth-notice" role="region" aria-label="Authentication Required">
+            <p className="auth-notice-text">
+              🔒 <strong>Sign-in required:</strong> You must be signed in to submit reports.
+            </p>
             <button
               type="button"
-              className="btn btn--secondary"
-              onClick={handleReportAnother}
+              className="btn-auth-demo"
+              onClick={handleDemoSignIn}
+              aria-label="1-Click Demo Login"
             >
-              Report Another Item
+              ⚡ 1-Click Demo Sign In
             </button>
-            <Link to="/found-items" className="btn btn--primary">
-              View Found Items Directory
-            </Link>
           </div>
-        </div>
-      ) : (
-        <div className="card form-card">
-          <form onSubmit={handleSubmit} noValidate>
-            {/* 1. Item Title */}
+        )}
+
+        {/* Success Alert Banner */}
+        {successMessage && (
+          <div className="alert alert-success" role="alert">
+            <span className="alert-icon">✅</span>
+            <div className="alert-content">
+              <strong className="alert-title">Report Submitted</strong>
+              <p className="alert-text">{successMessage}</p>
+            </div>
+            <button
+              type="button"
+              className="alert-close"
+              onClick={() => setSuccessMessage('')}
+              aria-label="Close notification"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Error Alert Banner */}
+        {serverError && (
+          <div className="alert alert-danger" role="alert">
+            <span className="alert-icon">⚠️</span>
+            <div className="alert-content">
+              <strong className="alert-title">Submission Error</strong>
+              <p className="alert-text">{serverError}</p>
+            </div>
+            <button
+              type="button"
+              className="alert-close"
+              onClick={() => setServerError('')}
+              aria-label="Close notification"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {/* Form Card */}
+        <div className="report-found-card">
+          <form onSubmit={handleSubmit} className="report-found-form" noValidate>
+            {/* Item Name */}
             <div className="form-group">
               <label htmlFor="found-title" className="form-label">
-                Item Name <span className="required-asterisk">*</span>
+                Item Name
+                <span className="required-star">*</span>
               </label>
               <input
-                id="found-title"
                 type="text"
+                id="found-title"
                 name="title"
-                className={`form-control ${errors.title ? 'is-invalid' : ''}`}
-                placeholder="e.g. Black Leather Wallet, Student ID Card, Blue Water Bottle"
+                className={`form-control ${errors.title ? 'has-error' : ''}`}
+                placeholder="e.g. Wireless Mouse, Student ID Card, Water Bottle"
                 value={formData.title}
                 onChange={handleChange}
+                disabled={isSubmitting}
+                maxLength={80}
+                aria-required="true"
+                aria-invalid={Boolean(errors.title)}
+                aria-describedby={errors.title ? 'title-error' : undefined}
               />
-              {errors.title && <span className="error-message">⚠️ {errors.title}</span>}
+              {errors.title && (
+                <div id="title-error" className="field-feedback" role="alert">
+                  <span className="error-icon">⚠️</span>
+                  <span>{errors.title}</span>
+                </div>
+              )}
             </div>
 
-            {/* 2. Category & Location (Row) */}
+            {/* Category & Location */}
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="found-category" className="form-label">
-                  Category <span className="required-asterisk">*</span>
+                  Category
+                  <span className="required-star">*</span>
                 </label>
                 <select
                   id="found-category"
                   name="category"
-                  className={`form-control ${errors.category ? 'is-invalid' : ''}`}
+                  className={`form-select ${errors.category ? 'has-error' : ''}`}
                   value={formData.category}
                   onChange={handleChange}
+                  disabled={isSubmitting}
+                  aria-required="true"
+                  aria-invalid={Boolean(errors.category)}
+                  aria-describedby={errors.category ? 'category-error' : undefined}
                 >
-                  <option value="">Select Category ▼</option>
+                  <option value="">Select a category</option>
                   {CATEGORIES.map((cat) => (
                     <option key={cat} value={cat}>
                       {cat}
                     </option>
                   ))}
                 </select>
-                {errors.category && <span className="error-message">⚠️ {errors.category}</span>}
+                {errors.category && (
+                  <div id="category-error" className="field-feedback" role="alert">
+                    <span className="error-icon">⚠️</span>
+                    <span>{errors.category}</span>
+                  </div>
+                )}
               </div>
 
               <div className="form-group">
                 <label htmlFor="found-location" className="form-label">
-                  Found Location <span className="required-asterisk">*</span>
+                  Campus Location Found
+                  <span className="required-star">*</span>
                 </label>
                 <select
                   id="found-location"
                   name="location"
-                  className={`form-control ${errors.location ? 'is-invalid' : ''}`}
+                  className={`form-select ${errors.location ? 'has-error' : ''}`}
                   value={formData.location}
                   onChange={handleChange}
+                  disabled={isSubmitting}
+                  aria-required="true"
+                  aria-invalid={Boolean(errors.location)}
+                  aria-describedby={errors.location ? 'location-error' : undefined}
                 >
-                  <option value="">Select Campus Location ▼</option>
+                  <option value="">Select location where found</option>
                   {LOCATIONS.map((loc) => (
                     <option key={loc} value={loc}>
                       {loc}
                     </option>
                   ))}
                 </select>
-                {errors.location && <span className="error-message">⚠️ {errors.location}</span>}
-              </div>
-            </div>
-
-            {/* 3. Found Date & Current Location (Row) */}
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="found-date" className="form-label">
-                  Found Date <span className="required-asterisk">*</span>
-                </label>
-                <input
-                  id="found-date"
-                  type="date"
-                  name="date"
-                  max={todayDate}
-                  className={`form-control ${errors.date ? 'is-invalid' : ''}`}
-                  value={formData.date}
-                  onChange={handleChange}
-                />
-                {errors.date && <span className="error-message">⚠️ {errors.date}</span>}
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="found-current-location" className="form-label">
-                  Currently Kept At / Handed Over To <span className="required-asterisk">*</span>
-                </label>
-                <input
-                  id="found-current-location"
-                  type="text"
-                  name="currentLocation"
-                  className={`form-control ${errors.currentLocation ? 'is-invalid' : ''}`}
-                  placeholder="e.g. Block A Security Desk, Library Reception"
-                  value={formData.currentLocation}
-                  onChange={handleChange}
-                />
-                {errors.currentLocation && (
-                  <span className="error-message">⚠️ {errors.currentLocation}</span>
+                {errors.location && (
+                  <div id="location-error" className="field-feedback" role="alert">
+                    <span className="error-icon">⚠️</span>
+                    <span>{errors.location}</span>
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* 4. Description */}
+            {/* Date Found */}
+            <div className="form-group">
+              <label htmlFor="found-date" className="form-label">
+                Date Found
+                <span className="required-star">*</span>
+              </label>
+              <input
+                type="date"
+                id="found-date"
+                name="date"
+                className={`form-control ${errors.date ? 'has-error' : ''}`}
+                value={formData.date}
+                onChange={handleChange}
+                disabled={isSubmitting}
+                max={new Date().toISOString().split('T')[0]}
+                aria-required="true"
+                aria-invalid={Boolean(errors.date)}
+                aria-describedby={errors.date ? 'date-error' : undefined}
+              />
+              {errors.date && (
+                <div id="date-error" className="field-feedback" role="alert">
+                  <span className="error-icon">⚠️</span>
+                  <span>{errors.date}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Description */}
             <div className="form-group">
               <label htmlFor="found-description" className="form-label">
-                Detailed Description <span className="required-asterisk">*</span>
+                Description
+                <span className="required-star">*</span>
               </label>
               <textarea
                 id="found-description"
                 name="description"
-                rows="4"
-                className={`form-control ${errors.description ? 'is-invalid' : ''}`}
-                placeholder="Describe unique features, color, brand, condition, or marks (minimum 10 characters)..."
+                className={`form-textarea ${errors.description ? 'has-error' : ''}`}
+                rows={4}
+                placeholder="Describe visible features, color, brand, condition, or exact place where the item was discovered on campus..."
                 value={formData.description}
                 onChange={handleChange}
+                disabled={isSubmitting}
+                maxLength={600}
+                aria-required="true"
+                aria-invalid={Boolean(errors.description)}
+                aria-describedby={errors.description ? 'desc-error' : 'desc-help'}
               />
+              <div className="char-counter">{descLength} / 600 characters (min. 10)</div>
               {errors.description && (
-                <span className="error-message">⚠️ {errors.description}</span>
+                <div id="desc-error" className="field-feedback" role="alert">
+                  <span className="error-icon">⚠️</span>
+                  <span>{errors.description}</span>
+                </div>
               )}
             </div>
 
-            {/* 5. Contact Info (Optional) */}
+            {/* Image Upload */}
             <div className="form-group">
-              <label htmlFor="found-contact" className="form-label">
-                Finder Contact Info (Optional)
+              <label htmlFor="found-item-image" className="form-label">
+                Item Photo
+                <span className="optional-text">(Optional, max 5MB)</span>
               </label>
               <input
-                id="found-contact"
-                type="text"
-                name="contact"
-                className="form-control"
-                placeholder="e.g. student@univ.edu or Block A Security Office"
-                value={formData.contact}
-                onChange={handleChange}
+                type="file"
+                id="found-item-image"
+                name="image"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={handleImageChange}
+                disabled={isSubmitting}
+                className="image-file-input"
               />
-              <span className="form-hint">
-                Provide contact info if owners can reach you directly, or leave blank if turned in to security.
-              </span>
-            </div>
 
-            {/* 6. Image Upload */}
-            <div className="form-group">
-              <label className="form-label">Item Image (Optional)</label>
-              <div className="image-upload-wrapper">
-                <input
-                  id="found-image-input"
-                  type="file"
-                  accept="image/jpeg,image/jpg,image/png,image/webp"
-                  className="file-input"
-                  onChange={handleImageChange}
-                />
-                <label htmlFor="found-image-input" className="btn-upload-trigger">
-                  📷 Choose Image
-                </label>
-                <div className="upload-hint">Supported formats: JPG, PNG, WEBP (Max 5MB)</div>
-
-                {imagePreview && (
-                  <div className="image-preview-container">
-                    <img
-                      src={imagePreview}
-                      alt="Found Item Preview"
-                      className="image-preview"
-                    />
-                    <button
-                      type="button"
-                      className="btn-remove-image"
-                      onClick={handleRemoveImage}
-                      title="Remove Image"
-                      aria-label="Remove Image"
-                    >
-                      ✕
-                    </button>
+              {!imagePreviewUrl ? (
+                <label htmlFor="found-item-image" className="image-dropzone">
+                  <div className="dropzone-content">
+                    <span className="dropzone-icon">📷</span>
+                    <p className="dropzone-prompt">
+                      Click to <span className="dropzone-link">browse</span> or select a photo
+                    </p>
+                    <p className="dropzone-limits">Supports JPG, PNG, WEBP, GIF up to 5MB</p>
                   </div>
-                )}
-              </div>
-              {errors.image && <span className="error-message">⚠️ {errors.image}</span>}
+                </label>
+              ) : (
+                <div className="image-preview-container">
+                  <img src={imagePreviewUrl} alt="Preview of found item" className="preview-thumbnail" />
+                  <div className="preview-details">
+                    <p className="preview-name">{imageMeta.fileName || 'Selected image'}</p>
+                    <p className="preview-size">{imageMeta.fileSize}</p>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-remove-image"
+                    onClick={handleClearImage}
+                    disabled={isSubmitting}
+                    title="Remove image"
+                    aria-label="Remove image"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              {errors.image && (
+                <div className="field-feedback" role="alert">
+                  <span className="error-icon">⚠️</span>
+                  <span>{errors.image}</span>
+                </div>
+              )}
             </div>
 
-            {/* Submit Button */}
-            <div className="form-actions" style={{ marginTop: '2rem' }}>
-              <button type="submit" className="btn btn--secondary btn--full">
-                Report Found Item
+            {/* Form Actions */}
+            <div className="form-actions">
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={handleResetForm}
+                disabled={isSubmitting}
+              >
+                Reset
+              </button>
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? '⏳ Submitting...' : '🟢 Submit Found Report'}
               </button>
             </div>
           </form>
         </div>
-      )}
+      </div>
     </main>
   );
-};
+}
 
 export default ReportFound;
