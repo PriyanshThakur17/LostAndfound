@@ -18,13 +18,13 @@ const App = () => {
       <div className="app-content">
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/items" element={<Items initialType="all" />} />
-          <Route path="/lost-items" element={<Items initialType="lost" />} />
-          <Route path="/found-items" element={<Items initialType="found" />} />
+          <Route path="/items" element={<Items key="all" initialType="all" />} />
+          <Route path="/lost-items" element={<Items key="lost" initialType="lost" />} />
+          <Route path="/found-items" element={<Items key="found" initialType="found" />} />
           <Route path="/report-lost" element={<ReportLost />} />
           <Route path="/report-found" element={<ReportFound />} />
           <Route path="/item/:id" element={<ItemDetails />} />
-          <Route path="*" element={<Items initialType="all" />} />
+          <Route path="*" element={<Items key="fallback" initialType="all" />} />
         </Routes>
       </div>
 

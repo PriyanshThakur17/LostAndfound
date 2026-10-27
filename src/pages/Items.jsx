@@ -1,17 +1,22 @@
-import { useState, useEffect } from 'react';
-import { getItems } from '../utils/storage';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { getItems } from '../services/api';
 import SearchBar from '../components/SearchBar';
 import FilterBar from '../components/FilterBar';
 import ItemCard from '../components/ItemCard';
 
 /**
  * Items Page — Main Browse/Search Module (Member 3).
+ * Connects to Express/MongoDB backend via GET /api/items.
+ *
  * Props:
  *   initialType : optional default type filter ('lost' | 'found' | 'all')
  */
 const Items = ({ initialType = 'all' }) => {
   // ---------- State ----------
-  const [allItems, setAllItems] = useState([]);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const [typeFilter, setTypeFilter] = useState(initialType);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
@@ -19,73 +24,37 @@ const Items = ({ initialType = 'all' }) => {
   const [status, setStatus] = useState('');
   const [sort, setSort] = useState('newest');
 
-  // Update typeFilter if initialType prop changes (e.g. navigation between /lost-items and /found-items)
+  // ---------- Fetch items from Express API ----------
+  const fetchItemsData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await getItems({
+        type: typeFilter,
+        category,
+        location,
+        status,
+        search,
+        sort,
+      });
+      setItems(data);
+    } catch (err) {
+      console.error('Error fetching items from API:', err);
+      setError(err.message || 'Failed to load items from the registry server.');
+    } finally {
+      setLoading(false);
+    }
+  }, [typeFilter, category, location, status, search, sort]);
+
+  // Refetch when query parameters change (with debounced search)
   useEffect(() => {
-    setTypeFilter(initialType);
-  }, [initialType]);
+    const timer = setTimeout(() => {
+      fetchItemsData();
+    }, 250);
 
-  // ---------- Load data from shared Local Storage ----------
-  useEffect(() => {
-    const loadedItems = getItems();
-    setAllItems(loadedItems);
-  }, []);
-
-  // ---------- Search helper ----------
-  const matchesSearch = (item) => {
-    if (!search) return true;
-    const query = search.toLowerCase();
-    return (
-      (item.title && item.title.toLowerCase().includes(query)) ||
-      (item.description && item.description.toLowerCase().includes(query)) ||
-      (item.category && item.category.toLowerCase().includes(query)) ||
-      (item.location && item.location.toLowerCase().includes(query))
-    );
-  };
-
-  // ---------- Filtering & Sorting Pipeline ----------
-  const getFilteredItems = () => {
-    let result = allItems.filter(matchesSearch);
-
-    // Filter by type (lost / found / all)
-    if (typeFilter && typeFilter !== 'all') {
-      result = result.filter((item) => item.type === typeFilter);
-    }
-
-    // Category filter
-    if (category) {
-      result = result.filter((item) => item.category === category);
-    }
-
-    // Location filter
-    if (location) {
-      result = result.filter((item) => item.location === location);
-    }
-
-    // Status filter
-    if (status) {
-      result = result.filter((item) => item.status === status);
-    }
-
-    // Sort items
-    result = [...result].sort((a, b) => {
-      switch (sort) {
-        case 'newest':
-          return new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt);
-        case 'oldest':
-          return new Date(a.date || a.createdAt) - new Date(b.date || b.createdAt);
-        case 'az':
-          return (a.title || '').localeCompare(b.title || '');
-        case 'za':
-          return (b.title || '').localeCompare(a.title || '');
-        default:
-          return 0;
-      }
-    });
-
-    return result;
-  };
-
-  const filteredItems = getFilteredItems();
+    return () => clearTimeout(timer);
+  }, [fetchItemsData]);
 
   // Reset all filters
   const handleReset = () => {
@@ -97,6 +66,17 @@ const Items = ({ initialType = 'all' }) => {
     setSort('newest');
   };
 
+  // Determine whether any filter or search term is actively set
+  const hasActiveFilters = useMemo(() => {
+    return (
+      search.trim() !== '' ||
+      category !== '' ||
+      location !== '' ||
+      status !== '' ||
+      typeFilter !== initialType
+    );
+  }, [search, category, location, status, typeFilter, initialType]);
+
   // Dynamic headers based on current type filter
   const getHeaderTitle = () => {
     if (typeFilter === 'lost') return 'Lost Items';
@@ -105,8 +85,12 @@ const Items = ({ initialType = 'all' }) => {
   };
 
   const getHeaderSubtitle = () => {
-    if (typeFilter === 'lost') return 'Find belongings that students have reported missing on campus.';
-    if (typeFilter === 'found') return 'Browse belongings that have been found around campus.';
+    if (typeFilter === 'lost') {
+      return 'Find belongings that students have reported missing on campus.';
+    }
+    if (typeFilter === 'found') {
+      return 'Browse belongings that have been found around campus.';
+    }
     return 'Search, filter, and browse all reported lost and found belongings on campus.';
   };
 
@@ -118,7 +102,7 @@ const Items = ({ initialType = 'all' }) => {
         <p className="page__subtitle">{getHeaderSubtitle()}</p>
       </header>
 
-      {/* Controls Bar (Search + FilterBar) */}
+      {/* Controls Bar (SearchBar + FilterBar) */}
       <div className="controls-bar">
         <SearchBar value={search} onChange={setSearch} />
         <FilterBar
@@ -136,37 +120,84 @@ const Items = ({ initialType = 'all' }) => {
         />
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="status-container status-container--loading" role="status" aria-live="polite">
+          <div className="loading-spinner" aria-label="Loading items…" />
+          <p className="status-container__text">Loading items from database…</p>
+        </div>
+      )}
+
+      {/* Error State with Retry Button */}
+      {!loading && error && (
+        <div className="status-container status-container--error" role="alert">
+          <span className="status-container__icon">⚠️</span>
+          <h2 className="status-container__title">Unable to Load Items</h2>
+          <p className="status-container__text">{error}</p>
+          <div className="status-container__actions">
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={fetchItemsData}
+            >
+              🔄 Retry Connection
+            </button>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                className="btn btn--outline"
+                onClick={handleReset}
+              >
+                Reset Filters
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Results Count */}
-      {filteredItems.length > 0 && (
+      {!loading && !error && items.length > 0 && (
         <p className="results-count">
-          Showing <span className="results-count__number">{filteredItems.length}</span>{' '}
-          {filteredItems.length === 1 ? 'item' : 'items'}
+          Showing <span className="results-count__number">{items.length}</span>{' '}
+          {items.length === 1 ? 'item' : 'items'}
         </p>
       )}
 
-      {/* Items Grid or Empty States */}
-      {filteredItems.length > 0 ? (
+      {/* Items Grid */}
+      {!loading && !error && items.length > 0 && (
         <div className="items-grid">
-          {filteredItems.map((item) => (
-            <ItemCard key={item.id} item={item} />
+          {items.map((item) => (
+            <ItemCard key={item._id || item.id} item={item} />
           ))}
         </div>
-      ) : allItems.length === 0 ? (
-        <div className="empty-state">
-          <span className="empty-state__icon">📭</span>
-          <h2 className="empty-state__title">No items reported yet.</h2>
-          <p className="empty-state__text">
-            When students report lost or found belongings, they will appear here.
-          </p>
-        </div>
-      ) : (
-        <div className="empty-state">
-          <span className="empty-state__icon">🔍</span>
-          <h2 className="empty-state__title">No items match your search.</h2>
-          <p className="empty-state__text">
-            Try changing your search keywords or resetting your filters.
-          </p>
-        </div>
+      )}
+
+      {/* Empty States */}
+      {!loading && !error && items.length === 0 && (
+        hasActiveFilters ? (
+          <div className="empty-state">
+            <span className="empty-state__icon">🔍</span>
+            <h2 className="empty-state__title">No items match your search.</h2>
+            <p className="empty-state__text">
+              Try changing your search keywords or resetting your active filters.
+            </p>
+            <button
+              type="button"
+              className="btn btn--outline empty-state__btn"
+              onClick={handleReset}
+            >
+              Clear All Filters
+            </button>
+          </div>
+        ) : (
+          <div className="empty-state">
+            <span className="empty-state__icon">📭</span>
+            <h2 className="empty-state__title">No items reported yet.</h2>
+            <p className="empty-state__text">
+              When students report lost or found belongings, they will appear here.
+            </p>
+          </div>
+        )
       )}
     </main>
   );

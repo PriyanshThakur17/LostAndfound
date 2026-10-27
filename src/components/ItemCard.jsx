@@ -3,14 +3,17 @@ import { CATEGORY_ICONS } from '../data/sampleItems';
 
 /**
  * ItemCard — Reusable card displaying a single lost/found item.
- * Props:
- *   item : object following the shared data model
+ * Supports both MongoDB `_id` and legacy numeric `id`.
+ *
+ * @param {Object} props
+ * @param {Object} props.item - Lost/found item document
  */
 const ItemCard = ({ item }) => {
   const navigate = useNavigate();
 
-  // Destructure item fields
-  const { id, type, title, category, description, location, date, image, status } = item;
+  // Consistent identifier support (MongoDB `_id` primary, fallback to `id`)
+  const itemId = item._id || item.id;
+  const { type, title, category, location, date, image, status } = item;
 
   // Category icon fallback
   const categoryIcon = CATEGORY_ICONS[category] || '📦';
@@ -19,20 +22,33 @@ const ItemCard = ({ item }) => {
   const formatDate = (dateStr) => {
     if (!dateStr) return '';
     const options = { day: '2-digit', month: 'short', year: 'numeric' };
-    return new Date(dateStr).toLocaleDateString('en-GB', options);
+    try {
+      return new Date(dateStr).toLocaleDateString('en-GB', options);
+    } catch {
+      return dateStr;
+    }
   };
 
-  const statusClass = (status || 'open').toLowerCase();
+  const statusClass = (status || 'Open').toLowerCase();
 
   const handleViewDetails = () => {
-    navigate(`/item/${id}`);
+    navigate(`/item/${itemId}`);
   };
 
   return (
     <article className="item-card">
       <div className="item-card__image-wrapper">
         {image ? (
-          <img className="item-card__image" src={image} alt={title} />
+          <img
+            className="item-card__image"
+            src={image}
+            alt={title}
+            onError={(e) => {
+              // Gracefully handle broken remote images
+              e.currentTarget.style.display = 'none';
+              e.currentTarget.parentElement.classList.add('item-card__image-wrapper--fallback');
+            }}
+          />
         ) : (
           <span className="item-card__placeholder-icon">{categoryIcon}</span>
         )}
@@ -43,7 +59,9 @@ const ItemCard = ({ item }) => {
       </div>
 
       <div className="item-card__body">
-        <h3 className="item-card__title">{categoryIcon} {title}</h3>
+        <h3 className="item-card__title">
+          {categoryIcon} {title}
+        </h3>
 
         <div className="item-card__meta">
           <span className="item-card__meta-row">
@@ -69,7 +87,7 @@ const ItemCard = ({ item }) => {
           className="item-card__action"
           onClick={handleViewDetails}
           type="button"
-          id={`view-details-${id}`}
+          id={`view-details-${itemId}`}
         >
           View Details
           <span className="item-card__action-arrow">→</span>

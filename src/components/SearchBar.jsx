@@ -1,13 +1,15 @@
-import { useState } from 'react';
-
 /**
  * SearchBar — Reusable controlled search input.
  * Props:
- *   value    : current search string (controlled)
- *   onChange  : callback invoked with new search string
+ *   value       : current search string (controlled)
+ *   onChange    : callback invoked with new search string
  *   placeholder : optional custom placeholder
  */
-const SearchBar = ({ value, onChange, placeholder = 'Search items by title, description, category or location…' }) => {
+const SearchBar = ({
+  value,
+  onChange,
+  placeholder = 'Search items by title, description, category or location…',
+}) => {
   return (
     <div className="search-bar">
       {/* Magnifying-glass SVG icon */}

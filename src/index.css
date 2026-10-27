@@ -1616,3 +1616,107 @@ a {
   }
 }
 
+
+
+/* ── API Integration & Status Container Styles (Member 3) ── */
+.status-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 1.5rem;
+  background-color: var(--color-card, #FFFFFF);
+  border: 1px solid var(--color-border, #E2E8F0);
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.05));
+  margin: 1.5rem 0;
+  min-height: 200px;
+}
+
+.status-container--error {
+  border-color: #FECACA;
+  background-color: #FEF2F2;
+}
+
+.status-container__icon {
+  font-size: 2.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.status-container__title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--color-danger, #DC2626);
+  margin-bottom: 0.5rem;
+}
+
+.status-container__text {
+  font-size: 0.95rem;
+  color: var(--color-muted, #64748B);
+  max-width: 480px;
+  line-height: 1.5;
+  margin-bottom: 1.25rem;
+}
+
+.status-container__actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.loading-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  background-color: var(--color-card, #FFFFFF);
+  border: 1px solid var(--color-border, #E2E8F0);
+  border-radius: var(--radius-lg, 12px);
+  margin: 2rem auto;
+  max-width: 520px;
+  color: var(--color-muted, #64748B);
+  font-weight: 500;
+}
+
+.loading-spinner {
+  width: 42px;
+  height: 42px;
+  border: 3.5px solid var(--color-border, #E2E8F0);
+  border-top-color: var(--color-primary, #1E3A8A);
+  border-radius: 50%;
+  animation: spinnerRotate 0.8s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spinnerRotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.empty-state__btn {
+  margin-top: 1.25rem;
+}
+
+.claim-error-banner {
+  background-color: #FEF2F2;
+  border: 1px solid #FECACA;
+  color: #DC2626;
+  border-radius: var(--radius-md, 8px);
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.item-card__image-wrapper--fallback {
+  background-color: var(--color-background, #F8FAFC);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
