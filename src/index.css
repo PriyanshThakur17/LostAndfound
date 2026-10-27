@@ -1362,6 +1362,12 @@ a {
   color: #065F46;
 }
 
+.alert-error {
+  background-color: #FEE2E2;
+  border-color: #FECACA;
+  color: #991B1B;
+}
+
 .alert-icon {
   font-size: 1.25rem;
   flex-shrink: 0;
