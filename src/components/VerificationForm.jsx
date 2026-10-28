@@ -2,7 +2,11 @@ import { useState } from 'react';
 import api, { getAuthToken, setAuthToken, setStoredUser } from '../api/client';
 
 /**
- * VerificationForm — Connected Claim Workflow Component
+ * =============================================================================
+ * VerificationForm — Anti-Fraud Ownership Verification & Claim Flow
+ * Author: Parth | Roll Number: 2410998556 (Member 4)
+ * Module: Ownership Verification Engine & Connected POST /api/claims
+ * =============================================================================
  *
  * Renders the appropriate verification workflow based on item type:
  *  - "found" item → Ownership Verification (claimant proves they own it)

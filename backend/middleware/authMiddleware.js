@@ -1,9 +1,11 @@
-// ============================================
-// Campus Lost & Found — Auth Middleware
-// ============================================
-// Protects routes that require a valid JWT.
-// Reads JWT from HttpOnly cookie or Authorization Bearer header.
-// ============================================
+// =============================================================================
+// Campus Lost & Found Registry — Authentication Middleware
+// Author: Parth | Roll Number: 2410998556 (Member 4)
+// Responsibility: Route Protection & Role-Based Access Control (RBAC)
+// =============================================================================
+// Verifies JWT from HttpOnly cookie or Authorization header.
+// Attaches validated user document to req.user.
+// =============================================================================
 
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';

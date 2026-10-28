@@ -1,11 +1,12 @@
-// ============================================
-// Campus Lost & Found — Auth Controller
-// ============================================
-// Handles registration, login, logout, and
-// current-user retrieval.
-//
-// Supports HttpOnly cookie + Bearer token in response
-// ============================================
+// =============================================================================
+// Campus Lost & Found Registry — Authentication Controller
+// Author: Parth | Roll Number: 2410998556 (Member 4)
+// Responsibility: Backend Foundation, JWT Authentication & Security
+// =============================================================================
+// Handles user registration, login, logout, and current-user retrieval.
+// Features: bcryptjs hashing, HttpOnly cookie generation, and constant-time
+// user enumeration mitigation.
+// =============================================================================
 
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';

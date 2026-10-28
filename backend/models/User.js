@@ -1,9 +1,8 @@
-// ============================================
-// Campus Lost & Found — User Model
-// ============================================
-// Owned by Member 4 (backend foundation).
-// Unified with Member 3 database setup.
-// ============================================
+// =============================================================================
+// Campus Lost & Found Registry — User Model
+// Author: Parth | Roll Number: 2410998556 (Member 4)
+// Responsibility: User Entity Schema, Password Hashing Hook & Sanitization
+// =============================================================================
 
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';

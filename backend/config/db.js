@@ -1,9 +1,9 @@
-// ============================================
-// Campus Lost & Found — MongoDB Connection
-// ============================================
-// Database: campus_lost_found (Member 3 verified)
-// Shared connection module for backend
-// ============================================
+// =============================================================================
+// Campus Lost & Found Registry — Central Database Connection
+// Author: Parth | Roll Number: 2410998556 (Member 4)
+// Responsibility: Fail-Fast MongoDB Connection & Mongoose Configuration
+// Database Target: campus_lost_found (127.0.0.1:27017)
+// =============================================================================
 
 import mongoose from 'mongoose';
 

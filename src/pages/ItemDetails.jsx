@@ -7,8 +7,12 @@ import { CATEGORY_ICONS } from '../data/sampleItems';
 import api, { getAuthToken } from '../api/client';
 
 /**
- * ItemDetails — Item Details & Connected Claim Verification Page
+ * =============================================================================
+ * ItemDetails — Item Details & Ownership Claim Verification Page
+ * Author: Parth | Roll Number: 2410998556 (Member 4)
+ * Module: Item Details, Dynamic Routing & Claim/Verification Engine
  * Route: /item/:id
+ * =============================================================================
  */
 const ItemDetails = () => {
   const { id } = useParams();
