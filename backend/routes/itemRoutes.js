@@ -6,6 +6,7 @@ import {
   updateItem,
   deleteItem,
 } from '../controllers/itemController.js';
+import { getItemClaims } from '../controllers/claimController.js';
 import { authenticate } from '../middleware/auth.js';
 import { uploadItemImage } from '../middleware/upload.js';
 
@@ -22,6 +23,7 @@ const router = express.Router();
 
 router.get('/', getItems);
 router.get('/:id', getItemById);
+router.get('/:id/claims', getItemClaims);
 
 router.post('/', uploadItemImage, authenticate, createItem);
 router.patch('/:id', uploadItemImage, authenticate, updateItem);

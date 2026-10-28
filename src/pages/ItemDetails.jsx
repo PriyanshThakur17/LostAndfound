@@ -5,7 +5,7 @@ import VerificationForm from '../components/VerificationForm';
 import { getItemById, updateItem } from '../utils/storage';
 import { CATEGORY_ICONS } from '../data/sampleItems';
 import api, { getAuthToken } from '../api/client';
-
+ 
 /**
  * ItemDetails — Item Details & Connected Claim Verification Page
  * Route: /item/:id
@@ -32,13 +32,14 @@ const ItemDetails = () => {
       try {
         // Try live server API first
         const res = await api.items.getById(id);
-        const loadedItem = res?.data || res?.item;
+        const loadedItem = res?.data || res?.item || (res?.title ? res : null);
         if (isMounted && loadedItem) {
           setItem(loadedItem);
           setNotFound(false);
           setLoading(false);
           return;
         }
+        throw new Error('Item not found in API');
 
       } catch {
         // Fallback to Local Storage
@@ -270,7 +271,7 @@ const ItemDetails = () => {
               <div className="meta-row">
                 <span className="meta-icon">👤</span>
                 <span className="meta-label">Reported by:</span>
-                <span className="meta-value">{createdBy}</span>
+                <span className="meta-value">{typeof createdBy === 'object' ? (createdBy.name || createdBy.email || 'Campus Member') : createdBy}</span>
               </div>
             )}
             {createdAt && (
