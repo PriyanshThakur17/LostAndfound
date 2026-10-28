@@ -134,16 +134,29 @@ const Navbar = () => {
             </button>
           </div>
         ) : (
-          <NavLink
-            to="/login"
-            className={({ isActive }) =>
-              `navbar__link navbar__link--auth${isActive ? ' navbar__link--active' : ''}`
-            }
-            onClick={closeMenu}
-            id="nav-auth"
-          >
-            🔐 Sign In / Register
-          </NavLink>
+          <div className="navbar__auth-group" style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+            <NavLink
+              to="/login"
+              className={({ isActive }) =>
+                `navbar__link navbar__link--login${isActive ? ' navbar__link--active' : ''}`
+              }
+              onClick={closeMenu}
+              id="nav-login"
+            >
+              Sign In
+            </NavLink>
+            <NavLink
+              to="/register"
+              className={({ isActive }) =>
+                `navbar__link navbar__link--register${isActive ? ' navbar__link--active' : ''}`
+              }
+              onClick={closeMenu}
+              id="nav-register"
+              style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)', fontWeight: '700' }}
+            >
+              ✨ Register
+            </NavLink>
+          </div>
         )}
       </div>
     </nav>
