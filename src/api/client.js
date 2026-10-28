@@ -8,7 +8,7 @@ const API_BASE = '/api';
  * Retrieves the stored JWT auth token from localStorage.
  */
 export const getAuthToken = () => {
-  return localStorage.getItem('auth_token') || '';
+  return localStorage.getItem('auth_token') || localStorage.getItem('campus_auth_token') || '';
 };
 
 /**
@@ -17,8 +17,10 @@ export const getAuthToken = () => {
 export const setAuthToken = (token) => {
   if (token) {
     localStorage.setItem('auth_token', token);
+    localStorage.setItem('campus_auth_token', token);
   } else {
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('campus_auth_token');
   }
 };
 
